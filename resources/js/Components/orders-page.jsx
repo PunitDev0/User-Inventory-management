@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { toast } from "react-toastify";
 
 export function UserOrdersPage() {
   const [orders, setOrders] = useState([]);
@@ -53,7 +54,7 @@ export function UserOrdersPage() {
         payment_amount: paymentAmount,
       });
       alert(response.data.message);
-
+      toast.success(response.data.message);
       // Refresh orders after payment
       setOrders((prevOrders) =>
         prevOrders.map((o) =>
