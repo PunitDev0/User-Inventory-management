@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { toast, ToastContainer } from "react-toastify";
 
 export function LoginForm({
   className,
@@ -33,7 +34,7 @@ export function LoginForm({
     setLoading(true);
 
     try {
-      const response = await axios.post("/login", {
+      const response = await axios.post("/Userlogin", {
         email: data.email,
         password: data.password,
       });
@@ -42,13 +43,14 @@ export function LoginForm({
       console.log("Login successful:", response);
       if (response.data.redirect) {
         // Redirect using Inertia's client-side navigation
-        // Inertia.visit(response.data.redirect);
-        window.location.href ='/Home'
+        Inertia.visit(response.data.redirect);
+        // window.location.href ='/Home'
       }
     } catch (err) {
       // Handle error (e.g., display error message)
       setError("Invalid email or password.");
-      console.error("Login error:", err);
+      console.error("Login error:", err.response.data.message);
+      toast.error(err.response.data.message)
     } finally {
       setLoading(false);
     }
@@ -56,6 +58,7 @@ export function LoginForm({
 
   return (
     <div className={cn("flex flex-col gap-6", className)} {...props}>
+      <ToastContainer/>
       <Card>
         <CardHeader>
           <CardTitle className="text-2xl">Login</CardTitle>

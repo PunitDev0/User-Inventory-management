@@ -12,7 +12,7 @@ import "react-toastify/dist/ReactToastify.css";
 
 
 export default function OrderPage({ id }) {
-  const { register, handleSubmit, setValue, watch, formState: { errors },reset } = useForm();
+  const { register, handleSubmit, setValue, watch, formState: { errors }, reset } = useForm();
   
   const [product, setProduct] = useState({
     id: 1,
@@ -54,7 +54,7 @@ export default function OrderPage({ id }) {
 
   // Calculate total amount based on product price and user-input quantity
   const totalAmount = parseFloat(products.price) * product.quantity || 0;
-  const paidAmount = parseFloat(watch('paid_amount')) || 0; // Corrected field name
+  const paidAmount = parseFloat(watch('paid_amount')) || 0;
   const remainingAmount = Math.max(totalAmount - paidAmount, 0);
 
   const onSubmit = async (data) => {
@@ -81,7 +81,7 @@ export default function OrderPage({ id }) {
         paid_amount: "",
         quantity: 1, // Ensure quantity resets
       });
-      toast.success("Order placed successfully")
+      toast.success("Order placed successfully");
       setProduct({ id: 1, name: "", image: "", quantity: 1, amount: 0 }); // Reset product state
       setError(""); // Clear error state
   
@@ -144,7 +144,10 @@ export default function OrderPage({ id }) {
               {...register('paid_amount', { 
                 valueAsNumber: true, 
                 required: "Paid amount is required",
-                validate: (value) => value <= totalAmount || "Paid amount cannot exceed total price"
+                validate: (value) => {
+                  const halfOfTotal = totalAmount / 2;
+                  return value >= halfOfTotal || `Paid amount must be at least half of the total amount. (${halfOfTotal.toFixed(2)})`;
+                }
               })}
               className="w-24 text-center"
             />

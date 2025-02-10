@@ -13,29 +13,34 @@ use Illuminate\Support\Facades\Validator;
 class AuthController extends Controller
 {
     // Login method
-    public function login(Request $request)
+    public function Userlogin(Request $request)
     {
         $validated = $request->validate([
             'email' => 'required|email',
             'password' => 'required',
         ]);
-
-        // Attempt to find the user based on the email
+    
+        // Find user by email
         $user = User::where('email', $validated['email'])->first();
-
-        // Check if the user exists and the password matches
+    
+        // Check if user exists and password matches
         if ($user && Hash::check($validated['password'], $user->password)) {
-            Auth::login($user);
-
-            // Return a success response, but no redirect here
-            return response()->json([
-                'message' => 'Login successful',
-                'redirect' => '/admin/dashboard', // Provide the redirect URL
-            ]);
-        }
-
-        return response()->json(['message' => 'Invalid credentials'], 401);
+            
+            // Check if user status is 1 or role is 'User'
+            if ($user->status == 1 && $user->role == 'User') {
+                Auth::login($user);
+    
+                return response()->json([
+                    'message' => 'Login successful',
+                    'redirect' => '/Home',
+                ]);
             }
+    
+            return response()->json(['message' => 'Access denied. Unauthorized user.'], 403);
+        }
+    
+        return response()->json(['message' => 'Invalid credentials'], 401);
+    }
 
     // Register method
     public function store(Request $request)

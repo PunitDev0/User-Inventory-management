@@ -11,7 +11,7 @@ use Inertia\Inertia;
 Route::get('/', function () {
     return Inertia::render('Auth/Login');
 })->middleware('guest');
-Route::post('/login', [AuthController::class, 'login'])->middleware('guest');
+Route::post('/Userlogin', [AuthController::class, 'Userlogin'])->middleware('guest');
 Route::post('/store', [AuthController::class, 'store']);
 Route::get('/logout', [AuthController::class, 'logout'])->name('logout');
 Route::get('/logged-in-user', [AuthController::class, 'getLoggedInUser']);
