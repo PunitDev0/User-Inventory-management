@@ -50,7 +50,7 @@ export function LoginForm({
       // Handle error (e.g., display error message)
       setError("Invalid email or password.");
       console.error("Login error:", err.response.data.message);
-      toast.error(err.response.data.message)
+      toast.error("Unauthorized User ");
     } finally {
       setLoading(false);
     }
