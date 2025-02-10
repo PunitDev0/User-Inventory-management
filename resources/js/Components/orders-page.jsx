@@ -127,6 +127,7 @@ export function UserOrdersPage() {
                         order.pending_payment !== "0" ? "bg-red-600" : "bg-green-600"
                       } text-white px-3 py-1`}
                       onClick={() => handlePayPending(order)}
+                      disabled={order.pending_payment == "0"}
                     >
                       {order.pending_payment !== "0" ? "Pay Pending" : "Paid"}
                     </Button>
