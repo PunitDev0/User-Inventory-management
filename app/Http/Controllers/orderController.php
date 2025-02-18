@@ -6,48 +6,59 @@ use App\Models\Order;
 use App\Models\Product;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Validator;
 
 class OrderController extends Controller
 {
-    public function Orderstore(Request $request)
+    public function OrderStore(Request $request)
     {
         $userId = Auth::id(); // Get authenticated user's ID
-        
-        // Check if request data is empty
-        if (!$request->has(['product_id', 'quantity', 'paid_amount'])) {
-            $orders = Order::where('user_id', $userId)->get();
-            return response()->json(['orders' => $orders]);
-        }
 
-        $request->validate([
+        // Validate the request data
+        $validator = Validator::make($request->all(), [
             'name' => 'required|string',
             'email' => 'required|email',
             'phone' => 'required|string',
             'address' => 'required|string',
             'city' => 'required|string',
             'zip' => 'required|string',
-            'paid_amount' => 'required|numeric',
-            'total_amount' => 'required|numeric',
-            'remaining_amount' => 'required|numeric',
-            'product_name' => 'required|string',
-            'quantity' => 'required|integer|min:1',
-            'product_price' => 'required|numeric',
-            'product_id' => 'required|exists:products,id',
+            'paid_amount' => 'required|numeric|min:0',
+            'total_amount' => 'required|numeric|min:0',
+            'pending_payment' => 'required|numeric|min:0',
+            'products' => 'required|array|min:1',
+            'products.*.product_id' => 'required|exists:products,id',
+            'products.*.product_name' => 'required|string',
+            'products.*.quantity' => 'required|integer|min:1',
+            'products.*.product_price' => 'required|numeric|min:0',
+            'products.*.total_price' => 'required|numeric|min:0',
         ]);
 
-        $productId = $request->input('product_id');
-        $product = Product::findOrFail($productId);
-
-        if ($product->stock_quantity < $request->input('quantity')) {
-            return response()->json(['error' => 'Insufficient stock available.'], 400);
+        if ($validator->fails()) {
+            return response()->json(['error' => $validator->errors()], 400);
         }
 
-        $product->stock_quantity -= $request->input('quantity');
-        $product->save();
+        // Check product stock and update quantities
+        $products = $request->input('products');
+        foreach ($products as $product) {
+            $productModel = Product::find($product['product_id']);
+            if (!$productModel) {
+                return response()->json(['error' => 'Product not found: ' . $product['product_name']], 404);
+            }
+            if ($productModel->stock_quantity < $product['quantity']) {
+                return response()->json(['error' => 'Insufficient stock for ' . $product['product_name']], 400);
+            }
+        }
 
+        // Deduct stock quantities
+        foreach ($products as $product) {
+            $productModel = Product::find($product['product_id']);
+            $productModel->stock_quantity -= $product['quantity'];
+            $productModel->save();
+        }
+
+        // Create the order
         $order = Order::create([
             'user_id' => $userId,
-            'product_id' => $productId,
             'user_name' => $request->input('name'),
             'user_email' => $request->input('email'),
             'user_phone' => $request->input('phone'),
@@ -56,51 +67,78 @@ class OrderController extends Controller
             'user_zip' => $request->input('zip'),
             'paid_payment' => $request->input('paid_amount'),
             'total_amount' => $request->input('total_amount'),
-            'pending_payment' => $request->input('remaining_amount'),
-            'product_name' => $request->input('product_name'),
-            'quantity' => $request->input('quantity'),
-            'product_price' => $request->input('product_price'),
+            'pending_payment' => $request->input('pending_payment'),
+            'products' => json_encode($products),
+            'status' => $request->input('pending_payment') > 0 ? 'pending' : 'paid',
         ]);
 
-        return response()->json(['message' => 'Order placed successfully. Stock updated.']);
+        return response()->json([
+            'message' => 'Order placed successfully.',
+            'order' => $order,
+        ], 201);
     }
 
-    public function payPendingPayment(Request $request)
+    public function PayPendingPayment(Request $request)
     {
         $userId = Auth::id(); // Get authenticated user's ID
-        $orderId = $request->input('order_id');
-        $paymentAmount = $request->input('payment_amount');
-        
-        // Validate request data
-        $request->validate([
+
+        // Validate the request data
+        $validator = Validator::make($request->all(), [
             'order_id' => 'required|exists:orders,id',
             'payment_amount' => 'required|numeric|min:0',
         ]);
+        
+        // if ($validator->fails()) {
+        //     return response()->json(['error' => $validator->errors()], 400);
+        // }
+        // dd(Order::where('user_id', $userId)
+        // ->where('id', $request->input('order_id'))
+        // ->first());
 
-        // Find the order
-        $order = Order::where('user_id', $userId)->where('id', $orderId)->first();
+        // Fetch the order
+        $order = Order::where('user_id', $userId)
+            ->where('id', $request->input('order_id'))
+            ->first();
 
         if (!$order) {
-            return response()->json(['error' => 'Order not found or you do not have permission to pay for this order.'], 404);
+            return response()->json(['error' => 'Order not found or unauthorized access.'], 404);
         }
 
-        // Check if the payment amount is greater than the pending amount
-        if ($paymentAmount > $order->pending_payment) {
-            return response()->json(['error' => 'Payment amount exceeds the pending amount.'], 400);
+        // Validate payment amount
+        if ($request->input('payment_amount') > $order->pending_payment) {
+            return response()->json(['error' => 'Payment exceeds pending amount.'], 400);
         }
 
-        // Update the payment details
-        $order->paid_payment += $paymentAmount;  // Increase paid payment
-        $order->pending_payment -= $paymentAmount; // Decrease pending payment
+        // Update order payment details
+        $order->paid_payment += $request->input('payment_amount');
+        $order->pending_payment -= $request->input('payment_amount');
 
-        // // Check if the order is fully paid
         // if ($order->pending_payment == 0) {
-        //     $order->status = 'paid'; // Optionally update the status
+        //     $order->status = 'paid';
         // }
 
         $order->save();
 
-        return response()->json(['message' => 'Payment successful. Pending payment updated.']);
+        return response()->json([
+            'message' => 'Payment successful.',
+            'order' => $order,
+        ]);
     }
 
+     // Method to fetch all orders for the authenticated user
+     public function getAllOrders(Request $request)
+     {
+         $userId = Auth::id(); // Get authenticated user's ID
+ 
+         // Get all orders for the authenticated user
+         $orders = Order::where('user_id', $userId)->get();
+ 
+         if ($orders->isEmpty()) {
+             return response()->json(['message' => 'No orders found.'], 404);
+         }
+ 
+         return response()->json([
+             'orders' => $orders,
+         ]);
+     }
 }

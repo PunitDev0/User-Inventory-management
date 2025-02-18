@@ -17,6 +17,11 @@ const navItems = [
     icon: ShoppingCart,
     badge: 5,
   },
+  {
+    title: "Cart",
+    href: "/cart",
+    icon: ShoppingCart,
+  },
 ];
 
 export function Layout({ children }) {

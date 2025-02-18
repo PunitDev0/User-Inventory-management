@@ -61,7 +61,7 @@ class CartController extends Controller {
 
     public function removeItem(Request $request) {
         $request->validate([
-            'product_id' => 'required|exists:products,id'
+            'product_id' => 'required'
         ]);
 
         $user = Auth::user(); // Assuming user is authenticated

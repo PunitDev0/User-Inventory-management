@@ -8,11 +8,28 @@ import { IndianRupee } from "lucide-react";
 import axios from "axios";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import { Layout } from "./Layout";
 
 export default function Checkout({ cartItems }) {
   const { register, handleSubmit, setValue, watch, formState: { errors }, reset } = useForm();
   const [products, setProducts] = useState(cartItems);
   const [error, setError] = useState(""); // State to store error message
+  const [userData, setUserData] = useState({
+    name: "",
+    email: "",
+    phone: "",
+    address: "",
+    city: "",
+    zip: "",
+  });
+
+  useEffect(() => {
+    // Populate user data if available (like from local storage or props)
+    const userInfo = JSON.parse(localStorage.getItem("userInfo"));
+    if (userInfo) {
+      setUserData(userInfo);
+    }
+  }, []);
 
   const handleProductChange = (index, key, value) => {
     const updatedProducts = [...products];
@@ -32,31 +49,27 @@ export default function Checkout({ cartItems }) {
     }
   };
 
-  // Calculate total amount based on product price and user-input quantity
-  const totalAmount = products.reduce((sum, product) => sum + parseFloat(product.price) * product.quantity, 0);
+  const totalAmount = products.reduce((sum, product) => sum + parseFloat(product.product.price) * product.quantity, 0);
   const paidAmount = parseFloat(watch('paid_amount')) || 0;
   const remainingAmount = Math.max(totalAmount - paidAmount, 0);
 
   const onSubmit = async (data) => {
     try {
-      // Prepare order data
       const orderData = {
         ...data,
         products: products.map(product => ({
-          product_name: product.productName,
-          product_id: product.product_id,
+          product_name: product.product.productName,  // Ensure the structure matches backend
+          product_id: product.product.id,
           quantity: product.quantity,
-          product_price: product.price
+          product_price: product.product.price,  // Ensure this field matches backend
+          total_price: parseFloat(product.product.price) * product.quantity  // Calculate total price
         })),
         total_amount: totalAmount,
-        paid_amount: paidAmount,
-        remaining_amount: remainingAmount,  // Add remaining amount here
+        pending_payment: remainingAmount, 
       };
 
-      console.log(orderData);  // Log order data for debugging
-
       // Send order data to backend
-      const response = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/OrderStore`, orderData);
+      const response = await axios.post(`/OrderStore`, orderData);
       console.log("Order placed successfully", response.data);
 
       // Reset the form and product state after a successful order
@@ -84,19 +97,20 @@ export default function Checkout({ cartItems }) {
   let progress = Math.min((filledFields + filledProduct) / (Object.keys(watch()).length + 1) * 100, 100);
 
   return (
-    <div className="max-w-3xl mx-auto p-6">
+   <Layout>
+     <div className="max-w-3xl mx-auto p-6">
       <h1 className="text-2xl font-semibold mb-4">Complete Your Order</h1>
       <ToastContainer position="top-right" autoClose={3000} />
       <Progress value={progress} className="mb-6" />
 
       {/* Product Details */}
       {products.map((product, index) => (
-        <Card key={product.cart_id} className="mb-4">
+        <Card key={index} className="mb-4">
           <CardHeader>Order Summary</CardHeader>
           <CardContent className="space-y-3">
             <div className="flex items-center justify-between space-x-4">
               <div className="flex-1">
-                <h3 className="font-semibold">{product.productName}</h3>
+                <h3 className="font-semibold">{product.product.productName}</h3>
                 <Input
                   type="number"
                   value={product.quantity}
@@ -108,13 +122,12 @@ export default function Checkout({ cartItems }) {
                   onChange={(e) => handleProductChange(index, "quantity", parseInt(e.target.value) || 1)}
                   className="w-20 text-center"
                 />
-                {/* Display error message if quantity exceeds stock */}
                 {error && <p className="text-red-500 text-sm">{error}</p>}
                 {errors.products?.[index]?.quantity && <p className="text-red-500 text-sm">{errors.products[index].quantity.message}</p>}
               </div>
               <div className="flex items-center space-x-2">
                 <span className="font-semibold">Price:</span>
-                <span className="text-xl font-bold">{product.price}</span>
+                <span className="text-xl font-bold"><IndianRupee size={15} /> {product.product.price}</span>
               </div>
             </div>
           </CardContent>
@@ -132,7 +145,7 @@ export default function Checkout({ cartItems }) {
             <Input
               type="number"
               min="0"
-              max={totalAmount} // Ensure paid amount does not exceed total amount
+              max={totalAmount}
               placeholder="Enter Paid Amount"
               {...register('paid_amount', { 
                 valueAsNumber: true, 
@@ -160,9 +173,21 @@ export default function Checkout({ cartItems }) {
       <Card className="mb-4">
         <CardHeader>Personal Details</CardHeader>
         <CardContent className="space-y-3">
-          <Input {...register('name', { required: "Name is required" })} placeholder="Full Name" />
-          <Input {...register('email', { required: "Email is required" })} placeholder="Email Address" />
-          <Input {...register('phone', { required: "Phone number is required" })} placeholder="Phone Number" />
+          <Input 
+            {...register('name', { required: "Name is required" })} 
+            placeholder="Full Name" 
+            defaultValue={userData.name} 
+          />
+          <Input 
+            {...register('email', { required: "Email is required" })} 
+            placeholder="Email Address" 
+            defaultValue={userData.email} 
+          />
+          <Input 
+            {...register('phone', { required: "Phone number is required" })} 
+            placeholder="Phone Number" 
+            defaultValue={userData.phone} 
+          />
         </CardContent>
       </Card>
 
@@ -170,9 +195,21 @@ export default function Checkout({ cartItems }) {
       <Card className="mb-4">
         <CardHeader>Shipping Address</CardHeader>   
         <CardContent className="space-y-3">
-          <Input {...register('address', { required: "Address is required" })} placeholder="Street Address" />
-          <Input {...register('city', { required: "City is required" })} placeholder="City" />
-          <Input {...register('zip', { required: "ZIP Code is required" })} placeholder="ZIP Code" />
+          <Input 
+            {...register('address', { required: "Address is required" })} 
+            placeholder="Street Address" 
+            defaultValue={userData.address} 
+          />
+          <Input 
+            {...register('city', { required: "City is required" })} 
+            placeholder="City" 
+            defaultValue={userData.city} 
+          />
+          <Input 
+            {...register('zip', { required: "ZIP Code is required" })} 
+            placeholder="ZIP Code" 
+            defaultValue={userData.zip} 
+          />
         </CardContent>
       </Card>
 
@@ -184,5 +221,6 @@ export default function Checkout({ cartItems }) {
         Place Order
       </Button>
     </div>
+   </Layout>
   );
 }

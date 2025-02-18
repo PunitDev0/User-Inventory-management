@@ -19,7 +19,7 @@ export function UserOrdersPage() {
   useEffect(() => {
     const fetchOrders = async () => {
       try {
-        const response = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/OrderStore`);
+        const response = await axios.get(`/userorders`);
         setOrders(response.data.orders);
       } catch (error) {
         console.error("Error fetching orders:", error);
@@ -41,18 +41,28 @@ export function UserOrdersPage() {
 
   const handlePayPending = (order) => {
     setSelectedOrder(order);
-    setPaymentAmount(order.pending_payment);
+    setPaymentAmount(order.pending_payment); // Set initial payment amount to pending payment
     setIsDialogOpen(true);
+  };
+
+  const handlePaymentAmountChange = (e) => {
+    const amount = e.target.value;
+    // Ensure the entered amount doesn't exceed the pending payment
+    if (amount <= selectedOrder.pending_payment) {
+      setPaymentAmount(amount);
+    }
   };
 
   const handlePaymentSubmit = async () => {
     if (!selectedOrder) return;
 
     try {
-      const response = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/pay-pending-payment`, {
+      const response = await axios.post(`/pay-pending-payment`, {
         order_id: selectedOrder.id,
         payment_amount: paymentAmount,
       });
+      console.log(response);
+      
       alert(response.data.message);
       toast.success(response.data.message);
       // Refresh orders after payment
@@ -199,7 +209,13 @@ export function UserOrdersPage() {
           </DialogHeader>
           <div className="mt-4">
             <label className="block text-sm font-medium text-gray-700">Amount to Pay</label>
-            <Input className="mt-2" type="number" value={paymentAmount} disabled />
+            <Input
+              className="mt-2"
+              type="number"
+              value={paymentAmount}
+              onChange={handlePaymentAmountChange}
+              max={selectedOrder?.pending_payment} // Limit the input to the pending amount
+            />
           </div>
           <DialogFooter>
             <Button className="bg-red-600 text-white" onClick={() => setIsDialogOpen(false)}>

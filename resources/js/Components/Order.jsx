@@ -10,7 +10,6 @@ import axios from "axios";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
-
 export default function OrderPage({ id }) {
   const { register, handleSubmit, setValue, watch, formState: { errors }, reset } = useForm();
   
@@ -22,9 +21,9 @@ export default function OrderPage({ id }) {
     amount: 100,
   });
 
-  const [products, setProducts] = useState([]);
-  const [error, setError] = useState(""); // State to store error message
-  
+  const [products, setProducts] = useState({});
+  const [error, setError] = useState("");
+
   useEffect(() => {
     const getProducts = async () => {
       try {
@@ -61,15 +60,20 @@ export default function OrderPage({ id }) {
     try {
       const orderData = {
         ...data,
-        product_name: products.productName,
-        product_id: products.id,
-        quantity: product.quantity,
+        products: [
+          {
+            product_id: products.id,
+            product_name: products.productName,
+            quantity: product.quantity,
+            product_price: products.price,
+            total_price: totalAmount,
+          }
+        ],
         total_amount: totalAmount,
-        remaining_amount: remainingAmount,
-        product_price: products.price
+        pending_payment: remainingAmount,
       };
   
-      const response = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/OrderStore`, orderData);
+      const response = await axios.post(`/OrderStore`, orderData);
       console.log("Order placed successfully", response.data);
       reset({
         name: "",
@@ -89,7 +93,6 @@ export default function OrderPage({ id }) {
       console.error("Error placing order", err);
     }
   };
-  
 
   let filledFields = Object.values(watch()).filter((v) => v !== "").length;
   let filledProduct = product.amount !== "" ? 1 : 0;

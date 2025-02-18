@@ -4,6 +4,8 @@ import { IndianRupee } from 'lucide-react';
 import { Link } from '@inertiajs/react';
 
 const CartPage = ({ cartItems }) => {
+  console.log(cartItems);
+  
   const [cart, setCart] = useState([]);
 
   // Use useEffect to set cart items from props when the component loads
@@ -18,7 +20,7 @@ const CartPage = ({ cartItems }) => {
 
     try {
       // Make API call to update quantity in the database
-      const response = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/cart/update`, {
+      const response = await axios.put(`/cart/update`, {
         product_id: cart[index].product_id,
         quantity: newQuantity,
       });
@@ -36,8 +38,12 @@ const CartPage = ({ cartItems }) => {
 
     try {
       // Make API call to remove item from the cart
-      await axios.post(`${import.meta.env.VITE_API_BASE_URL}/cart/remove`, {
-        product_id: cart[index].product_id,
+      console.log(cart[index].product_id);
+      
+      await axios.delete(`/cart/remove`, {
+        params :{
+          product_id: cart[index].product_id,
+        }
       });
       console.log('Item removed successfully');
     } catch (error) {
@@ -45,7 +51,7 @@ const CartPage = ({ cartItems }) => {
     }
   };
 
-  const totalPrice = cart.reduce((total, item) => total + parseFloat(item.price) * item.quantity, 0);
+  const totalPrice = cart.reduce((total, item) => total + parseFloat(item.product.price) * item.quantity, 0);
 
   return (
     <div className="p-4">
@@ -54,10 +60,10 @@ const CartPage = ({ cartItems }) => {
         <p>Your cart is empty.</p>
       ) : (
         cart.map((item, index) => (
-          <div key={item.cart_id} className="flex justify-between items-center border-b py-2">
+          <div key={item.id} className="flex justify-between items-center border-b py-2">
             <div>
-              <h2 className="text-xl">{item.productName}</h2>
-              <p className='flex items-center'><IndianRupee size={15}/>{parseFloat(item.price).toFixed(2)}</p>
+              <h2 className="text-xl">{item.product.productName}</h2>
+              <p className='flex items-center'><IndianRupee size={15}/>{parseFloat(item.product.price).toFixed(2)}</p>
             </div>
             <div className="flex items-center">
               <input
@@ -84,9 +90,9 @@ const CartPage = ({ cartItems }) => {
       )}
       {cart.length > 0 && (
         <Link href='/checkout'>
-        <button className="mt-4 bg-blue-500 text-white px-4 py-2 rounded">
-          Checkout
-        </button>
+          <button className="mt-4 bg-blue-500 text-white px-4 py-2 rounded">
+            Checkout
+          </button>
         </Link>
       )}
     </div>

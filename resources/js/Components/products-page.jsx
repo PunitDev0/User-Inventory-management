@@ -1,30 +1,29 @@
 import { useEffect, useState } from "react";
-import { Eye, Filter, IndianRupee, Plus, ShoppingCart } from "lucide-react";
+import { Eye, Filter, IndianRupee, ShoppingCart } from "lucide-react";
 import cn from "classnames";
-
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { fetchProducts } from "@/lib/Api";
+import { fetchProducts } from "@/lib/Api"; // Assuming addToCart is implemented in your API library
 import { Link } from "@inertiajs/react";
+import axios from 'axios';
 
 export function ProductsPage() {
   const [filter, setFilter] = useState("All Categories");
-  const [status, setStatus] = useState("all");
   const [products, setProducts] = useState([]);
   const [selectedProduct, setSelectedProduct] = useState(null);
+  const [quantity, setQuantity] = useState(1); // State to track quantity
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isOrderModalOpen, setIsOrderModalOpen] = useState(false); // State for order modal
+  const [cart, setCart] = useState([]); // State to track cart items
 
   useEffect(() => {
     const getProducts = async () => {
       try {
         const productsData = await fetchProducts();
         setProducts(productsData);
-        console.log(productsData);
-        
       } catch (err) {
         console.error(err);
       }
@@ -40,6 +39,26 @@ export function ProductsPage() {
   const openOrderModal = (product) => {
     setSelectedProduct(product);
     setIsOrderModalOpen(true);
+  };
+
+  const handleAddToCart = async () => {
+    if (!selectedProduct) return;
+
+    try {
+      const response = await axios.post("/cart", {
+        product_id: selectedProduct.id,
+        quantity: quantity, // Send quantity along with product ID
+      });
+
+      if (response?.status === 201) {
+        setCart([...cart, { ...selectedProduct, quantity }]); // Add to local cart state
+        alert("Product added to cart");
+        setIsModalOpen(false); // Close modal after adding to cart
+      }
+    } catch (err) {
+      console.error("Error adding to cart:", err);
+      alert("Failed to add product to cart");
+    }
   };
 
   const defaultImage =
@@ -101,17 +120,24 @@ export function ProductsPage() {
                     {product.status}
                   </span>
                 </div>
-                <p className="mt-2 text-lg font-bold flex items-center"><IndianRupee size={15}/>{product.price}</p>
+                <p className="mt-2 text-lg font-bold flex items-center">
+                  <IndianRupee size={15} />
+                  {product.price}
+                </p>
               </CardContent>
               <CardFooter className="p-4 pt-0 flex justify-between">
                 <span className="text-sm text-muted-foreground">Stock: {product.stock_quantity}</span>
                 <div className="flex gap-2">
                   <Button variant="ghost" size="sm" onClick={() => openProductModal(product)}>
-                    <Eye className="h-4 w-4" /> View Details
+                    <Eye className="h-4 w-4" /> Add Cart
                   </Button>
-                  <Link className="flex items-center gap-2 text-sm bg-green-500 rounded-xl p-2" href={`/addorder/${product.id}`}>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => openOrderModal(product)} // Open order modal on "Order" button click
+                  >
                     <ShoppingCart className="h-4 w-4" /> Order
-                  </Link>
+                  </Button>
                 </div>
               </CardFooter>
             </Card>
@@ -135,9 +161,20 @@ export function ProductsPage() {
               />
               <p><strong>Category:</strong> {selectedProduct.category}</p>
               <p><strong>Quantity:</strong> {selectedProduct.stock_quantity}</p>
-              <p><strong>Price:</strong> ${selectedProduct.price}</p>
+              <p><strong>Price:</strong> {selectedProduct.price}</p>
               <p><strong>Description:</strong> {selectedProduct.description}</p>
               <p><strong>Recent Sales:</strong> {selectedProduct.recentSales}</p>
+              <div className="flex gap-4 mt-4">
+                <Input
+                  type="number"
+                  value={quantity}
+                  onChange={(e) => setQuantity(Math.max(1, e.target.value))}
+                  min="1"
+                  max={selectedProduct.stock_quantity}
+                  className="w-24"
+                />
+                <Button onClick={handleAddToCart}>Add to Cart</Button>
+              </div>
             </div>
           </DialogContent>
         </Dialog>
@@ -153,11 +190,19 @@ export function ProductsPage() {
             </DialogHeader>
             <div className="grid gap-4 py-4">
               <p><strong>Product:</strong> {selectedProduct.name}</p>
-              <p><strong>Price:</strong> ${selectedProduct.price}</p>
-              <p><strong>Quantity Available:</strong> {selectedProduct.quantity}</p>
-
-              {/* You can add an order form here */}
-              <Button className="w-full">Place Order</Button>
+              <p><strong>Price:</strong> {selectedProduct.price}</p>
+              <p><strong>Quantity Available:</strong> {selectedProduct.stock_quantity}</p>
+              <div className="flex gap-4 mt-4">
+                <Input
+                  type="number"
+                  value={quantity}
+                  onChange={(e) => setQuantity(Math.max(1, e.target.value))}
+                  min="1"
+                  max={selectedProduct.stock_quantity}
+                  className="w-24"
+                />
+                <Button onClick={handleAddToCart}>Place Order</Button>
+              </div>
             </div>
           </DialogContent>
         </Dialog>
