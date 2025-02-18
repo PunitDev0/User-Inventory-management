@@ -19,7 +19,7 @@ export function UserOrdersPage() {
   useEffect(() => {
     const fetchOrders = async () => {
       try {
-        const response = await axios.post("/OrderStore");
+        const response = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/OrderStore`);
         setOrders(response.data.orders);
       } catch (error) {
         console.error("Error fetching orders:", error);
@@ -49,7 +49,7 @@ export function UserOrdersPage() {
     if (!selectedOrder) return;
 
     try {
-      const response = await axios.post("/pay-pending-payment", {
+      const response = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/pay-pending-payment`, {
         order_id: selectedOrder.id,
         payment_amount: paymentAmount,
       });

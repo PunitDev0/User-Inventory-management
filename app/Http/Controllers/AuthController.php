@@ -32,7 +32,7 @@ class AuthController extends Controller
     
                 return response()->json([
                     'message' => 'Login successful',
-                    'redirect' => '/Home',
+                    'redirect' => 'public/Home',
                 ]);
             }
     
@@ -85,7 +85,7 @@ class AuthController extends Controller
     public function logout(Request $request)
     {
         Auth::logout();
-        return Inertia::location('/');
+        return Inertia::location('/user/public');
     }
     
     public function getLoggedInUser(Request $request)

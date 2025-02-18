@@ -4,73 +4,62 @@ import { Progress } from "@/components/ui/progress";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardFooter } from "@/components/ui/card";
-import { fetchProducts } from "@/lib/Api";
 import { IndianRupee } from "lucide-react";
 import axios from "axios";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
-
-export default function OrderPage({ id }) {
+export default function Checkout({ cartItems }) {
   const { register, handleSubmit, setValue, watch, formState: { errors }, reset } = useForm();
-  
-  const [product, setProduct] = useState({
-    id: 1,
-    name: "Smartphone",
-    image: "https://via.placeholder.com/100",
-    quantity: 1,
-    amount: 100,
-  });
-
-  const [products, setProducts] = useState([]);
+  const [products, setProducts] = useState(cartItems);
   const [error, setError] = useState(""); // State to store error message
-  
-  useEffect(() => {
-    const getProducts = async () => {
-      try {
-        const productsData = await fetchProducts(id);
-        setProducts(productsData[0]);
-      } catch (err) {
-        console.error(err);
-      }
-    };
-    getProducts();
-  }, [id]);
 
-  const handleProductChange = (key, value) => {
+  const handleProductChange = (index, key, value) => {
+    const updatedProducts = [...products];
     if (key === "quantity") {
       // Check if the entered quantity exceeds the stock quantity
-      if (value > products.stock_quantity) {
+      if (value > updatedProducts[index].stock_quantity) {
         setError("Quantity exceeds available stock.");
       } else {
         setError(""); // Clear the error message if valid quantity
-        setProduct((prev) => ({ ...prev, [key]: value }));
-        setValue("quantity", value); // Update the React Hook Form field
+        updatedProducts[index][key] = value;
+        setProducts(updatedProducts);
+        setValue(`products[${index}].quantity`, value); // Update the React Hook Form field
       }
     } else {
-      setProduct((prev) => ({ ...prev, [key]: value }));
+      updatedProducts[index][key] = value;
+      setProducts(updatedProducts);
     }
   };
 
   // Calculate total amount based on product price and user-input quantity
-  const totalAmount = parseFloat(products.price) * product.quantity || 0;
+  const totalAmount = products.reduce((sum, product) => sum + parseFloat(product.price) * product.quantity, 0);
   const paidAmount = parseFloat(watch('paid_amount')) || 0;
   const remainingAmount = Math.max(totalAmount - paidAmount, 0);
 
   const onSubmit = async (data) => {
     try {
+      // Prepare order data
       const orderData = {
         ...data,
-        product_name: products.productName,
-        product_id: products.id,
-        quantity: product.quantity,
+        products: products.map(product => ({
+          product_name: product.productName,
+          product_id: product.product_id,
+          quantity: product.quantity,
+          product_price: product.price
+        })),
         total_amount: totalAmount,
-        remaining_amount: remainingAmount,
-        product_price: products.price
+        paid_amount: paidAmount,
+        remaining_amount: remainingAmount,  // Add remaining amount here
       };
-  
+
+      console.log(orderData);  // Log order data for debugging
+
+      // Send order data to backend
       const response = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/OrderStore`, orderData);
       console.log("Order placed successfully", response.data);
+
+      // Reset the form and product state after a successful order
       reset({
         name: "",
         email: "",
@@ -79,20 +68,19 @@ export default function OrderPage({ id }) {
         city: "",
         zip: "",
         paid_amount: "",
-        quantity: 1, // Ensure quantity resets
       });
+      setProducts(cartItems);  // Reset product state
+      setError("");  // Clear any error messages
+
       toast.success("Order placed successfully");
-      setProduct({ id: 1, name: "", image: "", quantity: 1, amount: 0 }); // Reset product state
-      setError(""); // Clear error state
-  
     } catch (err) {
       console.error("Error placing order", err);
+      toast.error("Error placing the order. Please try again.");
     }
   };
-  
 
   let filledFields = Object.values(watch()).filter((v) => v !== "").length;
-  let filledProduct = product.amount !== "" ? 1 : 0;
+  let filledProduct = products.some(product => product.quantity > 0) ? 1 : 0;
   let progress = Math.min((filledFields + filledProduct) / (Object.keys(watch()).length + 1) * 100, 100);
 
   return (
@@ -102,33 +90,38 @@ export default function OrderPage({ id }) {
       <Progress value={progress} className="mb-6" />
 
       {/* Product Details */}
+      {products.map((product, index) => (
+        <Card key={product.cart_id} className="mb-4">
+          <CardHeader>Order Summary</CardHeader>
+          <CardContent className="space-y-3">
+            <div className="flex items-center justify-between space-x-4">
+              <div className="flex-1">
+                <h3 className="font-semibold">{product.productName}</h3>
+                <Input
+                  type="number"
+                  value={product.quantity}
+                  {...register(`products[${index}].quantity`, { 
+                    valueAsNumber: true, 
+                    min: 1,
+                    required: "Quantity is required"
+                  })}
+                  onChange={(e) => handleProductChange(index, "quantity", parseInt(e.target.value) || 1)}
+                  className="w-20 text-center"
+                />
+                {/* Display error message if quantity exceeds stock */}
+                {error && <p className="text-red-500 text-sm">{error}</p>}
+                {errors.products?.[index]?.quantity && <p className="text-red-500 text-sm">{errors.products[index].quantity.message}</p>}
+              </div>
+              <div className="flex items-center space-x-2">
+                <span className="font-semibold">Price:</span>
+                <span className="text-xl font-bold">{product.price}</span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      ))}
+
       <Card className="mb-4">
-        <CardHeader>Order Summary</CardHeader>
-        <CardContent className="space-y-3">
-          <div className="flex items-center justify-between space-x-4">
-            <div className="flex-1">
-              <h3 className="font-semibold">{products.productName}</h3>
-              <Input
-                type="number"
-                value={product.quantity}
-                {...register('quantity', { 
-                  valueAsNumber: true, 
-                  min: 1,
-                  required: "Quantity is required"
-                })}
-                onChange={(e) => handleProductChange("quantity", parseInt(e.target.value) || 1)}
-                className="w-20 text-center"
-              />
-              {/* Display error message if quantity exceeds stock */}
-              {error && <p className="text-red-500 text-sm">{error}</p>}
-              {errors.quantity && <p className="text-red-500 text-sm">{errors.quantity.message}</p>}
-            </div>
-            <div className="flex items-center space-x-2">
-              <span className="font-semibold">Price:</span>
-              <span className="text-xl font-bold">{products.price}</span>
-            </div>
-          </div>
-        </CardContent>
         <CardFooter className="flex flex-col space-y-2 font-bold">
           <div className="flex justify-between w-full">
             <span>Total Price:</span>
@@ -146,7 +139,10 @@ export default function OrderPage({ id }) {
                 required: "Paid amount is required",
                 validate: (value) => {
                   const halfOfTotal = totalAmount / 2;
-                  return value >= halfOfTotal || `Paid amount must be at least half of the total amount. (${halfOfTotal.toFixed(2)})`;
+                  if (value >= halfOfTotal && value <= totalAmount) {
+                    return true;
+                  }
+                  return `Paid amount must be at least half of the total amount (${halfOfTotal.toFixed(2)}) and cannot exceed the total amount (${totalAmount.toFixed(2)}).`;
                 }
               })}
               className="w-24 text-center"
