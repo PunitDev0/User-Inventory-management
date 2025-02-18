@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 export function UserOrdersPage() {
   const [orders, setOrders] = useState([]);
@@ -20,7 +21,7 @@ export function UserOrdersPage() {
     const fetchOrders = async () => {
       try {
         const response = await axios.get(`/userorders`);
-        setOrders(response.data.orders);
+        setOrders(response.data.orders || []);
       } catch (error) {
         console.error("Error fetching orders:", error);
         setError("Failed to fetch orders. Please try again later.");
@@ -33,7 +34,7 @@ export function UserOrdersPage() {
 
   const filteredOrders = orders.filter((order) =>
     order.user_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    order.product_name.toLowerCase().includes(searchQuery.toLowerCase())
+    order.products.product_name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   if (loading) return <div>Loading...</div>;
@@ -41,40 +42,46 @@ export function UserOrdersPage() {
 
   const handlePayPending = (order) => {
     setSelectedOrder(order);
-    setPaymentAmount(order.pending_payment); // Set initial payment amount to pending payment
+    setPaymentAmount(""); // Reset payment amount when opening the dialog
     setIsDialogOpen(true);
   };
 
   const handlePaymentAmountChange = (e) => {
     const amount = e.target.value;
+    const numericAmount = Number(amount);
+
     // Ensure the entered amount doesn't exceed the pending payment
-    if (amount <= selectedOrder.pending_payment) {
-      setPaymentAmount(amount);
+    if (numericAmount >= 0 && numericAmount <= selectedOrder.pending_payment) {
+      setPaymentAmount(numericAmount);
+    } else {
+      toast.error("Amount should not exceed the pending payment.");
     }
   };
 
   const handlePaymentSubmit = async () => {
-    if (!selectedOrder) return;
+    if (!selectedOrder || !paymentAmount || paymentAmount <= 0) {
+      toast.error("Please enter a valid payment amount.");
+      return;
+    }
 
     try {
       const response = await axios.post(`/pay-pending-payment`, {
         order_id: selectedOrder.id,
         payment_amount: paymentAmount,
       });
-      console.log(response);
       
-      alert(response.data.message);
-      toast.success(response.data.message);
+      toast.success("Payment successful!");
+      
       // Refresh orders after payment
       setOrders((prevOrders) =>
         prevOrders.map((o) =>
-          o.id === selectedOrder.id ? { ...o, pending_payment: "0" } : o
+          o.id === selectedOrder.id ? { ...o, pending_payment: String(Number(o.pending_payment) - Number(paymentAmount)) } : o
         )
       );
 
       setIsDialogOpen(false);
     } catch (error) {
-      alert(error.response?.data?.error || "Payment failed");
+      toast.error(error.response?.data?.error || "Payment failed. Please try again.");
     }
   };
 
@@ -108,7 +115,7 @@ export function UserOrdersPage() {
               filteredOrders.map((order) => (
                 <TableRow key={order.id} className="border-b">
                   <TableCell>{order.id}</TableCell>
-                  <TableCell>{order.product_name}</TableCell>
+                  <TableCell>{order.products.product_name}</TableCell>
                   <TableCell>{order.quantity}</TableCell>
                   <TableCell>
                     {order.user_address}, {order.user_city}, {order.user_zip}
@@ -126,7 +133,7 @@ export function UserOrdersPage() {
                     </div>
                   </TableCell>
                   <TableCell>
-                    {order.pending_payment !== "0" ? (
+                    {Number(order.pending_payment) > 0 ? (
                       <span className="text-red-500 font-semibold">Pending</span>
                     ) : (
                       <span className="text-green-500 font-semibold">Paid</span>
@@ -135,12 +142,12 @@ export function UserOrdersPage() {
                   <TableCell>
                     <Button
                       className={`${
-                        order.pending_payment !== "0" ? "bg-red-600" : "bg-green-600"
+                        Number(order.pending_payment) > 0 ? "bg-red-600" : "bg-green-600"
                       } text-white px-3 py-1`}
                       onClick={() => handlePayPending(order)}
-                      disabled={order.pending_payment == "0"}
+                      disabled={Number(order.pending_payment) <= 0}
                     >
-                      {order.pending_payment !== "0" ? "Pay Pending" : "Paid"}
+                      {Number(order.pending_payment) > 0 ? "Pay Pending" : "Paid"}
                     </Button>
                   </TableCell>
                 </TableRow>
@@ -164,14 +171,14 @@ export function UserOrdersPage() {
                 <h2 className="text-lg font-semibold">Order #{order.id}</h2>
                 <span
                   className={`px-2 py-1 text-sm font-medium rounded-lg ${
-                    order.pending_payment !== "0" ? "bg-red-100 text-red-600" : "bg-green-100 text-green-600"
+                    Number(order.pending_payment) > 0 ? "bg-red-100 text-red-600" : "bg-green-100 text-green-600"
                   }`}
                 >
-                  {order.pending_payment !== "0" ? "Pending" : "Paid"}
+                  {Number(order.pending_payment) > 0 ? "Pending" : "Paid"}
                 </span>
               </div>
               <p className="mt-2 text-gray-600">
-                <b>Product:</b> {order.product_name}
+                <b>Product:</b> {order.products.product_name}
               </p>
               <p className="mt-1 text-gray-600">
                 <b>Quantity:</b> {order.quantity}
@@ -188,12 +195,11 @@ export function UserOrdersPage() {
                 <b>Pending:</b> {order.pending_payment}
               </p>
               <Button
-                className={`w-full mt-3 ${
-                  order.pending_payment !== "0" ? "bg-red-600" : "bg-green-600"
-                } text-white py-2`}
+                className={`w-full mt-3 ${Number(order.pending_payment) > 0 ? "bg-red-600" : "bg-green-600"} text-white py-2`}
                 onClick={() => handlePayPending(order)}
+                disabled={Number(order.pending_payment) <= 0}
               >
-                {order.pending_payment !== "0" ? "Pay Pending" : "Paid"}
+                {Number(order.pending_payment) > 0 ? "Pay Pending" : "Paid"}
               </Button>
             </div>
           ))
@@ -214,6 +220,7 @@ export function UserOrdersPage() {
               type="number"
               value={paymentAmount}
               onChange={handlePaymentAmountChange}
+              min={0} // Allow any positive amount
               max={selectedOrder?.pending_payment} // Limit the input to the pending amount
             />
           </div>
