@@ -2,12 +2,10 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Role;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
-use App\Models\User;
-use Inertia\Inertia;
 use Illuminate\Support\Facades\Validator;
 
 class AuthController extends Controller
@@ -50,7 +48,7 @@ class AuthController extends Controller
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email',
             'role' => 'required|string|max:255',
-            'password' => 'required',
+            'password' => 'required|min:6',
         ]);
 
         if ($validator->fails()) {
@@ -71,28 +69,25 @@ class AuthController extends Controller
         return response()->json(['message' => 'User created successfully', 'user' => $user], 201);
     }
 
-    public function getAllUsers()
-
+    // Get all users
+    public function getAllUsers(Request $request)
     {
-        $user = User::all();
-        return response()->json(['users' => $user], 200);
+        // Fetch all users with pagination (for performance)
+        $users = User::paginate(10);  // Adjust the pagination count as needed
+        return response()->json(['users' => $users], 200);
     }
-
- 
-
 
     // Logout method
     public function logout(Request $request)
     {
         Auth::logout();
-        return Inertia::location('/');
+        return redirect('/'); // Redirect to login page
     }
     
+    // Get logged-in user data
     public function getLoggedInUser(Request $request)
     {
         $user = Auth::user(); // Get the currently authenticated user
         return response()->json(['user' => $user], 200);
     }
-
-
 }

@@ -2,7 +2,7 @@ import axios from 'axios';
 
 export const fetchProducts = async (id) => {
     try {
-      const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/getproducts`,{
+      const response = await axios.get(`/getproducts`,{
         params:{
             'id':id
         }

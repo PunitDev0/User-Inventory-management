@@ -34,7 +34,7 @@ export function LoginForm({
     setLoading(true);
 
     try {
-      const response = await axios.post(`/Userlogin`, {
+      const response = await axios.post(`Userlogin`, {
         email: data.email,
         password: data.password,
       });

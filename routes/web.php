@@ -3,6 +3,8 @@
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CartController;
 use App\Http\Controllers\OrderController;
+use App\Http\Controllers\OrdersController;
+use App\Http\Controllers\PendingPaymentController;
 use App\Http\Controllers\ProductsController;
 use App\Models\Cart;
 use Illuminate\Support\Facades\Auth;
@@ -27,8 +29,15 @@ Route::group(['middleware' => 'auth'], function() {
 Route::get('/Home', function () {
     return Inertia::render('Home');
 });
+
+Route::get('/test', function () {
+    return Inertia::render('TestPage');
+});
 Route::get('/orders', function () {
     return Inertia::render('Orders');
+});
+Route::get('/AllProduct', function () {
+    return Inertia::render('AllProducts');
 });
 Route::get('/checkout', function () {
 
@@ -55,8 +64,7 @@ Route::get('/addorder/{id}', function ($id) {
         'id' => $id,  // Pass the ID as a prop
     ]);
 });
-Route::get('/getproducts', [ProductsController::class, 'getAllProduct']);
-Route::get('/products', [ProductsController::class, 'getAllProduct']); // For fetching all products or by id
+// Route::get('/getproducts', [ProductsController::class, 'getAllProduct']);
 Route::post('/OrderStore', [OrderController::class, 'Orderstore']); // For fetching all products or by id
 Route::post('/pay-pending-payment', [OrderController::class, 'payPendingPayment']); // For fetching all products or by id
 Route::get('/userorders', [OrderController::class, 'getAllOrders']); // For fetching all products or by id
@@ -69,3 +77,43 @@ Route::post('/cart', [CartController::class, 'store']);
 
     // Remove item from cart
     Route::delete('/cart/remove', [CartController::class, 'removeItem']);
+
+
+
+
+
+
+
+
+
+
+    Route::prefix('api')->group(function () {
+        // Resource route for orders
+        Route::resource('orders', OrdersController::class);
+    
+        // Custom route for fetching orders by authenticated user
+        Route::get('auth-orders', [OrdersController::class, 'AuthOrders']);
+    });
+
+
+
+    Route::prefix('api')->group(function () {
+        Route::prefix('order')->group(function () {
+            Route::get('/', [OrdersController::class, 'index']); // Fetch all orders
+            Route::post('/', [OrdersController::class, 'store']); // Place a new order
+            Route::get('/{id}', [OrdersController::class, 'show']); // Get a single order
+            Route::put('/{id}', [OrdersController::class, 'update']); // Update order payment
+            Route::post('/{id}', [OrdersController::class, 'destroy']); // Delete an order
+            Route::get('user/order', [OrdersController::class, 'AuthOrders']); // Get 
+        });
+    
+        Route::prefix('products')->group(function () {
+            Route::get('/', [ProductsController::class, 'index']); // Fetch all products
+            Route::get('/{id}', [ProductsController::class, 'show']); // Fetch product by ID
+        });
+        Route::prefix('PayPendingPayment')->group(function () {
+            Route::post('/', [PendingPaymentController::class, 'PendingPayment']);
+        });
+
+    });
+    

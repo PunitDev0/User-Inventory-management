@@ -82,19 +82,11 @@ class OrderController extends Controller
     {
         $userId = Auth::id(); // Get authenticated user's ID
 
-        // Validate the request data
         $validator = Validator::make($request->all(), [
             'order_id' => 'required|exists:orders,id',
             'payment_amount' => 'required|numeric|min:0',
         ]);
-        
-        // if ($validator->fails()) {
-        //     return response()->json(['error' => $validator->errors()], 400);
-        // }
-        // dd(Order::where('user_id', $userId)
-        // ->where('id', $request->input('order_id'))
-        // ->first());
-
+ 
         // Fetch the order
         $order = Order::where('user_id', $userId)
             ->where('id', $request->input('order_id'))

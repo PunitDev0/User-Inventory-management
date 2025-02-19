@@ -12,7 +12,7 @@ import Dashboard from "./Dashboard";
 import product from "@/lib/Services/product";
 import { toast } from "react-toastify";
 
-export function ProductsPage() {
+export function AllProdcuts() {
   const [filter, setFilter] = useState("All Categories");
   const [products, setProducts] = useState([]);
   const [selectedProduct, setSelectedProduct] = useState(null);
@@ -75,7 +75,6 @@ export function ProductsPage() {
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <h1 className="text-3xl font-bold text-gray-800">Products</h1>
       </div>
-      <Dashboard />
       <div className="mt-6 space-y-4">
         <div className="flex flex-col gap-4 md:flex-row md:items-center">
           <div className="relative flex-1">

@@ -1,5 +1,5 @@
 import { Link, usePage } from "@inertiajs/react";
-import { BarChart3, Bell, Box, History, LayoutDashboard, Package, Settings, ShoppingCart, Users, LogOut } from "lucide-react";
+import { BarChart3, Bell, Box, History, LayoutDashboard, Package, Settings, ShoppingCart, Users, LogOut, Package2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
@@ -22,6 +22,11 @@ const navItems = [
     href: "/cart",
     icon: ShoppingCart,
   },
+  {
+    title: "Product",
+    href: "/AllProduct",
+    icon: Package2,
+  },
 ];
 
 export function Layout({ children }) {
@@ -29,7 +34,7 @@ export function Layout({ children }) {
   const { auth } = usePage().props;
 
   const handleLogout = () => {
-    Inertia.get("/logout");
+    Inertia.get("logout");
   };
 
   return (
