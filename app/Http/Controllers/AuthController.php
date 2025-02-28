@@ -30,7 +30,10 @@ class AuthController extends Controller
     
                 return response()->json([
                     'message' => 'Login successful',
-                    'redirect' => '/Home',
+                    'redirect' => env('ENVIRONMENT') === 'production' 
+                    ? '/user/public/Home' 
+                    : '/Home', // Dynamic redirect based on environment
+
                 ]);
             }
     
@@ -81,8 +84,15 @@ class AuthController extends Controller
     public function logout(Request $request)
     {
         Auth::logout();
-        return redirect('/'); // Redirect to login page
+    
+        // Redirect dynamically based on environment
+        $redirectPath = env('ENVIRONMENT') === 'production' 
+            ? '/user/public'   // Production logout path
+            : '/';  // Local logout path
+    
+        return redirect($redirectPath);
     }
+    
     
     // Get logged-in user data
     public function getLoggedInUser(Request $request)

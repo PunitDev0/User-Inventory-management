@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Cart;
 use App\Models\Order;
+use App\Models\OrderpaymentLog;
 use App\Models\Product;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -41,33 +43,17 @@ class OrdersController extends Controller
             'products' => 'required|array|min:1',
             'products.*.product_id' => 'required|exists:products,id',
             'products.*.quantity' => 'required|integer|min:1',
+            'products.*.From' => 'required|string|',
             'products.*.product_price' => 'required|numeric|min:0',
             'products.*.total_price' => 'required|numeric|min:0',
-            'delivered_date' => 'required|string', // Validation for ISO 8601 format
+            'delivered_date' => 'required|string',
         ]);
     
-        // if ($validator->fails()) {
-        //     return response()->json(['error' => $validator->errors()], 400);
-        // }
-    
-        // Check stock availability
-        foreach ($request->products as $product) {
-            $productModel = Product::find($product['product_id']);
-            if ($productModel->stock_quantity < $product['quantity']) {
-                return response()->json(['error' => 'Insufficient stock for ' . $productModel->name], 400);
-            }
+        if ($validator->fails()) {
+            return response()->json(['error' => $validator->errors()], 400);
         }
     
-        // Deduct stock quantities
-        foreach ($request->products as $product) {
-            $productModel = Product::find($product['product_id']);
-            $productModel->stock_quantity -= $product['quantity'];
-            $productModel->save();
-        }
-    
-      
-    
-        // Create order with delivered_date from request
+        // Create the order without reducing stock
         $order = Order::create([
             'user_id' => $userId,
             'user_name' => $request->name,
@@ -81,12 +67,28 @@ class OrdersController extends Controller
             'pending_payment' => $request->pending_payment,
             'products' => json_encode($request->products),
             'status' => $request->pending_payment > 0 ? 'pending' : 'paid',
-            'delivered_date' => $request->delivered_date, // Store delivered_date
+            'delivered_date' => $request->delivered_date,
         ]);
     
-        return response()->json(['message' => 'Order placed successfully.', 'order' => $order], 201);
-    }
+        // Log payment in OrderpaymentLog
+        $paymentLog = OrderpaymentLog::create([
+            'order_id' => $order->id,
+            'user_id' => $userId,
+            'payment_amount' => $request->paid_amount,
+        ]);
     
+        // Check if the type is 'checkout' and delete the user's checkout data
+        if ($request->type === 'checkout') {
+            Cart::where('user_id', $userId)->delete(); // Delete checkout data after order
+        }
+    
+        return response()->json([
+            'message' => 'Order placed successfully.',
+            'order' => $order,
+            'payment_log' => $paymentLog,
+            'type' => $request->type
+        ], 201);
+    }
     
     
     
@@ -106,33 +108,6 @@ class OrdersController extends Controller
     /**
      * Update payment for an existing order.
      */
-    public function update(Request $request, string $id)
-    {
-        $userId = Auth::id();
-        $validator = Validator::make($request->all(), [
-            'payment_amount' => 'required|numeric|min:0',
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json(['error' => $validator->errors()], 400);
-        }
-
-        $order = Order::where('user_id', $userId)->where('id', $id)->first();
-        if (!$order) {
-            return response()->json(['error' => 'Order not found or unauthorized access.'], 404);
-        }
-
-        if ($request->payment_amount > $order->pending_payment) {
-            return response()->json(['error' => 'Payment exceeds pending amount.'], 400);
-        }
-
-        $order->paid_payment += $request->payment_amount;
-        $order->pending_payment -= $request->payment_amount;
-        $order->status = $order->pending_payment == 0 ? 'paid' : 'pending';
-        $order->save();
-
-        return response()->json(['message' => 'Payment successful.', 'order' => $order]);
-    }
 
     /**
      * Remove the specified order from storage.
@@ -146,22 +121,7 @@ class OrdersController extends Controller
         if (!$order) {
             return response()->json(['error' => 'Order not found.'], 404);
         }
-    
-        // Decode the products JSON stored in the order
-        $products = json_decode($order->products, true);
-    
-        // Loop through each product in the order and update the quantity in the Products table
-        foreach ($products as $product) {
-            $productRecord = Product::find($product['product_id']);
-            
-            if ($productRecord) {
-                // Add the product quantity from the order back to the product's quantity
-                $productRecord->stock_quantity += $product['quantity'];
-                $productRecord->save(); // Save the updated product
-            }
-        }
-    
-        // Update the order status to 'canceled'
+
         $order->status = 'canceled';
         $order->save(); // Save the updated order status
     
@@ -182,6 +142,49 @@ class OrdersController extends Controller
 
 
    
+    public function checkAvailability(Request $request)
+    {
+        // Validate the request
+        $validator = Validator::make($request->all(), [
+            'products' => 'required|array|min:1',
+            'products.*.product_id' => 'required|exists:products,id',
+            'products.*.quantity' => 'required|integer|min:1',
+            'delivered_date' => 'required|string',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['error' => $validator->errors()], 400);
+        }
+
+        $availability = [];
+
+        foreach ($request->products as $product) {
+            $productModel = Product::find($product['product_id']);
+            $requestedQty = $product['quantity'];
+
+            // Get total quantity reserved for this product on the given date
+            $reservedQty = Order::where('delivered_date', $request->delivered_date)
+                ->where('status', '!=', 'canceled')
+                ->get()
+                ->sum(function ($order) use ($product) {
+                    $products = json_decode($order->products, true);
+                    $matchedProduct = array_filter($products, fn($p) => $p['product_id'] == $product['product_id']);
+                    return !empty($matchedProduct) ? array_values($matchedProduct)[0]['quantity'] : 0;
+                });
+
+            $availableQty = $productModel->stock_quantity - $reservedQty;
+            $isAvailable = $availableQty >= $requestedQty;
+
+            $availability[$product['product_id']] = [
+                'available' => $isAvailable,
+                'message' => $isAvailable 
+                    ? "Available: $availableQty in stock" 
+                    : "Not enough stock. Only $availableQty available",
+            ];
+        }
+
+        return response()->json($availability);
+    }
 
 
 }

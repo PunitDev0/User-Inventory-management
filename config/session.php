@@ -32,9 +32,9 @@ return [
     |
     */
 
-    'lifetime' => (int) env('SESSION_LIFETIME', 120),
+   'lifetime' => 120, // Session lifetime in minutes
+   'expire_on_close' => false, // Keep session alive even if browser is closed
 
-    'expire_on_close' => env('SESSION_EXPIRE_ON_CLOSE', false),
 
     /*
     |--------------------------------------------------------------------------

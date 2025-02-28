@@ -8,12 +8,14 @@ use App\Models\Product;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
+use App\Models\OrderpaymentLog; // Use the new model
 
 class PendingPaymentController extends Controller
 {
     /**
      * Display a listing of the resource.
      */
+
     public function PendingPayment(Request $request)
     {
         $userId = Auth::id(); // Get authenticated user's ID
@@ -40,6 +42,13 @@ class PendingPaymentController extends Controller
         // Update order payment details
         $order->paid_payment += $request->input('payment_amount');
         $order->pending_payment -= $request->input('payment_amount');
+        
+        // Save the payment attempt in the 'orderpayment_logs' table
+        OrderpaymentLog::create([
+            'order_id' => $order->id,
+            'user_id' => $userId,
+            'payment_amount' => $request->input('payment_amount'),
+        ]);
     
         // If pending payment is 0, update the status to "paid"
         if ($order->pending_payment == 0.00) {
@@ -53,5 +62,6 @@ class PendingPaymentController extends Controller
             'order' => $order,
         ]);
     }
+    
     
 }

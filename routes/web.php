@@ -26,20 +26,20 @@ Route::group(['middleware' => 'auth'], function() {
     
     
 });
-Route::get('/Home', function () {
+Route::get('Home', function () {
     return Inertia::render('Home');
 });
 
-Route::get('/test', function () {
+Route::get('test', function () {
     return Inertia::render('TestPage');
 });
-Route::get('/orders', function () {
+Route::get('orders', function () {
     return Inertia::render('Orders');
 });
-Route::get('/AllProduct', function () {
+Route::get('AllProduct', function () {
     return Inertia::render('AllProducts');
 });
-Route::get('/checkout', function () {
+Route::get('checkout', function () {
 
     
     $userId = Auth::id();
@@ -49,7 +49,7 @@ Route::get('/checkout', function () {
     return Inertia::render('Checkout', ['cartItems' => $cartItems]);
 
 });
-Route::get('/cart', function () {
+Route::get('cart', function () {
 
     $userId = Auth::id();
     $cartItems = Cart::with('product')
@@ -58,25 +58,25 @@ Route::get('/cart', function () {
 
     return Inertia::render('Cart', ['cartItems' => $cartItems]);
 });
-Route::get('/addorder/{id}', function ($id) {
+Route::get('addorder/{id}', function ($id) {
     // Pass the `id` as a prop to the React component
     return Inertia::render('AddOrder', [
         'id' => $id,  // Pass the ID as a prop
     ]);
 });
 // Route::get('/getproducts', [ProductsController::class, 'getAllProduct']);
-Route::post('/OrderStore', [OrderController::class, 'Orderstore']); // For fetching all products or by id
-Route::post('/pay-pending-payment', [OrderController::class, 'payPendingPayment']); // For fetching all products or by id
-Route::get('/userorders', [OrderController::class, 'getAllOrders']); // For fetching all products or by id
+// Route::post('/OrderStore', [OrderController::class, 'Orderstore']); // For fetching all products or by id
+// Route::post('/pay-pending-payment', [OrderController::class, 'payPendingPayment']); // For fetching all products or by id
+// Route::get('/userorders', [OrderController::class, 'getAllOrders']); // For fetching all products or by id
 
 
-Route::post('/cart', [CartController::class, 'store']);
+Route::post('cart', [CartController::class, 'store']);
 
     // Update quantity of product in cart
-    Route::put('/cart/update', [CartController::class, 'updateQuantity']);
+    Route::put('cart/update', [CartController::class, 'updateQuantity']);
 
     // Remove item from cart
-    Route::delete('/cart/remove', [CartController::class, 'removeItem']);
+    Route::delete('cart/remove', [CartController::class, 'removeItem']);
 
 
 
@@ -106,6 +106,8 @@ Route::post('/cart', [CartController::class, 'store']);
             Route::post('/{id}', [OrdersController::class, 'destroy']); // Delete an order
             Route::get('user/order', [OrdersController::class, 'AuthOrders']); // Get 
         });
+        //Check Stock availability
+        Route::post('/check-availability', [OrdersController::class, 'checkAvailability']);
     
         Route::prefix('products')->group(function () {
             Route::get('/', [ProductsController::class, 'index']); // Fetch all products
@@ -114,6 +116,13 @@ Route::post('/cart', [CartController::class, 'store']);
         Route::prefix('PayPendingPayment')->group(function () {
             Route::post('/', [PendingPaymentController::class, 'PendingPayment']);
         });
+
+        Route::prefix('categories')->group(function () {
+            Route::get('/', [ProductsController::class, 'getAllCategories']); // Get all categories
+
+        });
+
+        
 
     });
     

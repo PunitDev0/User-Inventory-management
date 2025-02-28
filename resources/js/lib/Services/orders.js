@@ -1,6 +1,9 @@
 import axios from "axios";
 
-const API_URL = "api/order"; // Adjust if needed
+const API_URL = import.meta.env.VITE_ENVIRONMENT === "production"
+  ? "https://event.nikatby.in/user/public/api/order"   // Production API URL
+  : "http://127.0.0.1:8001/api/order";  // Local development API URL
+
 
 const ordersService = {
   // Fetch all orders
@@ -37,10 +40,14 @@ const ordersService = {
   },
 
   // Place a new order
-  placeOrder: async (orderData) => {
+  placeOrder: async (orderData, type) => {
     try {
-      const response = await axios.post(API_URL, orderData);
-      return response.data;
+      const response = await axios.post(API_URL, {
+        ...orderData, // The order data object containing all other information
+        type: type,   // The 'type' field is included in the body of the request
+      });
+      
+      return response;
     } catch (error) {
       console.error("Error placing order:", error);
       throw error;

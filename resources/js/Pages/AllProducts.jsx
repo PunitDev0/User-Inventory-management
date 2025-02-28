@@ -1,11 +1,11 @@
-import { AllProdcuts } from '@/Components/Allproducts'
+import { AllProducts } from '@/Components/Allproducts'
 import { Layout } from '@/Components/Layout'
 import React from 'react'
 
 function Page() {
   return (
     <Layout>
-      <AllProdcuts/>
+      <AllProducts/>
     </Layout>
   )
 }

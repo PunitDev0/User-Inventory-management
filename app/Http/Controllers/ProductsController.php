@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Category;
 use Illuminate\Http\Request;
 use App\Models\Product;
 
@@ -20,5 +21,10 @@ class ProductsController extends Controller
             return response()->json(['error' => 'Order not found.'], 404);
         }
         return response()->json(['product' => $product]);
+    }
+    public function getAllCategories()
+    {
+        $categories = Category::all();
+        return response()->json(['categories' => $categories], 200);
     }
 }

@@ -25,6 +25,7 @@ class Order extends Model
         'pending_payment',
         'products', // Store the products as a JSON field
         'delivered_date',
+        'status',
     ];
 
     // If the products column is a JSON field, you can cast it to an array

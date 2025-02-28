@@ -6,27 +6,10 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/co
 import { Inertia } from "@inertiajs/inertia";
 
 const navItems = [
-  {
-    title: "Home",
-    href: "/Home",
-    icon: LayoutDashboard,
-  },
-  {
-    title: "Orders",
-    href: "/orders",
-    icon: ShoppingCart,
-    badge: 5,
-  },
-  {
-    title: "Cart",
-    href: "/cart",
-    icon: ShoppingCart,
-  },
-  {
-    title: "Product",
-    href: "/AllProduct",
-    icon: Package2,
-  },
+  { title: "Home", href: "Home", icon: LayoutDashboard, color: "text-indigo-600" },
+  { title: "Orders", href: "orders", icon: ShoppingCart, color: "text-teal-600" },
+  { title: "Cart", href: "cart", icon: ShoppingCart, color: "text-purple-600" },
+  { title: "Products", href: "AllProduct", icon: Package2, color: "text-orange-600" },
 ];
 
 export function Layout({ children }) {
@@ -38,94 +21,111 @@ export function Layout({ children }) {
   };
 
   return (
-    <div className="flex min-h-screen">
-      {/* Sidebar for desktop */}
-      <aside className="hidden w-64 border-r bg-background lg:block">
-        <div className="flex h-16 items-center border-b px-6">
-          <Link href="/" className="flex items-center font-semibold">
-            StockMaster
+    <div className="flex min-h-screen bg-gray-100 dark:bg-gray-900 transition-colors duration-300">
+      {/* Sidebar for desktop - Fixed, hidden until xl */}
+      <aside className="hidden xl:block fixed top-0 left-0 w-64 h-screen bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 shadow-md z-50">
+        <div className="flex h-14 items-center justify-between px-4 border-b border-gray-200 dark:border-gray-700 bg-indigo-600 dark:bg-indigo-800">
+          <Link href="/" className="flex items-center gap-2">
+            <Package className="h-6 w-6 text-white" />
+            <span className="text-lg font-semibold text-white">StockMaster</span>
           </Link>
         </div>
-        <nav className="space-y-1 p-4">
+        <nav className="space-y-1 p-3 overflow-y-auto h-[calc(100vh-3.5rem)]">
           {navItems.map((item) => (
             <Link
               key={item.href}
               href={item.href}
               className={cn(
-                "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
+                "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors duration-200",
                 pathname === item.href
-                  ? "bg-secondary text-secondary-foreground"
-                  : "text-muted-foreground hover:bg-secondary hover:text-secondary-foreground"
-              )}>
-              <item.icon className="h-4 w-4" />
-              <span>{item.title}</span>
-              {item.badge && (
-                <span className="ml-auto rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
-                  {item.badge}
-                </span>
+                  ? "bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-200"
+                  : "text-gray-700 dark:text-gray-300 hover:bg-indigo-50 dark:hover:bg-gray-700 hover:text-indigo-600 dark:hover:text-indigo-400"
               )}
+            >
+              <item.icon className={cn("h-5 w-5", item.color)} />
+              <span>{item.title}</span>
             </Link>
           ))}
         </nav>
       </aside>
 
-      {/* Main content */}
-      <div className="flex flex-1 flex-col">
-        <header className="flex h-16 items-center justify-between border-b px-6">
+      {/* Main content wrapper */}
+      <div className="flex flex-1 flex-col w-full xl:ml-64">
+        {/* Header - Fixed */}
+        <header className="fixed top-0 left-0 right-0 h-14 flex items-center justify-between px-4 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 shadow-md z-40">
           {/* Mobile menu */}
           <Sheet>
             <SheetTrigger asChild>
-              <Button variant="outline" size="icon" className="lg:hidden">
-                <Package className="h-4 w-4" />
+              <Button variant="ghost" size="icon" className="xl:hidden text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">
+                <Package className="h-6 w-6" />
                 <span className="sr-only">Toggle menu</span>
               </Button>
             </SheetTrigger>
-            <SheetContent side="left" className="w-64 p-0">
-              <SheetHeader className="border-b p-6">
-                <SheetTitle>StockMaster</SheetTitle>
+            <SheetContent side="left" className="w-64 p-0 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700">
+              <SheetHeader className="flex h-14 items-center border-b border-gray-200 dark:border-gray-700 bg-indigo-600 dark:bg-indigo-800 px-4">
+                <SheetTitle className="flex items-center gap-2">
+                  <Package className="h-6 w-6 text-white" />
+                  <span className="text-lg font-semibold text-white">StockMaster</span>
+                </SheetTitle>
               </SheetHeader>
-              <nav className="space-y-1 p-4">
+              <nav className="space-y-1 p-3">
                 {navItems.map((item) => (
                   <Link
                     key={item.href}
                     href={item.href}
                     className={cn(
-                      "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
+                      "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors duration-200",
                       pathname === item.href
-                        ? "bg-secondary text-secondary-foreground"
-                        : "text-muted-foreground hover:bg-secondary hover:text-secondary-foreground"
-                    )}>
-                    <item.icon className="h-4 w-4" />
-                    <span>{item.title}</span>
-                    {item.badge && (
-                      <span className="ml-auto rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
-                        {item.badge}
-                      </span>
+                        ? "bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-200"
+                        : "text-gray-700 dark:text-gray-300 hover:bg-indigo-50 dark:hover:bg-gray-700 hover:text-indigo-600 dark:hover:text-indigo-400"
                     )}
+                  >
+                    <item.icon className={cn("h-5 w-5", item.color)} />
+                    <span>{item.title}</span>
                   </Link>
                 ))}
               </nav>
             </SheetContent>
           </Sheet>
 
-          <div className="flex items-center gap-4 ml-auto">
-            <Button variant="ghost" size="icon" className="relative">
-              <Bell className="h-4 w-4" />
-              <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-primary" />
+          {/* Right side of header */}
+          <div className="flex items-center gap-2 sm:gap-3 ml-auto">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full"
+            >
+              <Bell className="h-5 w-5" />
+              <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-red-500" />
               <span className="sr-only">Notifications</span>
             </Button>
-            <Button variant="ghost" size="icon">
-              <Settings className="h-4 w-4" />
+            <Button
+              variant="ghost"
+              size="icon"
+              className="text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full"
+            >
+              <Settings className="h-5 w-5" />
               <span className="sr-only">Settings</span>
             </Button>
-            <span className="text-sm font-medium">{auth.user?.name}</span>
-            <Button variant="outline" size="sm" onClick={handleLogout}>
-              <LogOut className="h-4 w-4 mr-2" /> Logout
+            <span className="text-sm font-medium text-gray-800 dark:text-gray-100 px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded-full hidden sm:block">
+              {auth.user?.name || "Guest"}
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleLogout}
+              className="text-indigo-600 dark:text-indigo-400 border-indigo-600 dark:border-indigo-400 hover:bg-indigo-600 hover:text-white dark:hover:bg-indigo-500 transition-colors duration-200 text-xs sm:text-sm px-2 sm:px-3"
+            >
+              <LogOut className="h-4 w-4 mr-1 sm:mr-2" />
+              Logout
             </Button>
           </div>
         </header>
 
-        <main className="flex-1">{children}</main>
+        {/* Main content area - Adjusted for fixed header */}
+        <main className="flex-1 pt-10  bg-white dark:bg-gray-900 rounded-tl-xl shadow-md mt-2 overflow-y-auto">
+          {children}
+        </main>
       </div>
     </div>
   );
