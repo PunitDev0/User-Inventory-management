@@ -15,7 +15,9 @@ const navItems = [
 export function Layout({ children }) {
   const pathname = window.location.pathname;
   const { auth } = usePage().props;
-
+  const endpoint = import.meta.env.VITE_ENVIRONMENT === "production" 
+      ? "https://event.nikatby.in/user/public/"
+      : "/";
   const handleLogout = () => {
     Inertia.get("logout");
   };
@@ -25,7 +27,7 @@ export function Layout({ children }) {
       {/* Sidebar for desktop - Fixed, hidden until xl */}
       <aside className="hidden xl:block fixed top-0 left-0 w-64 h-screen bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 shadow-md z-50">
         <div className="flex h-14 items-center justify-between px-4 border-b border-gray-200 dark:border-gray-700 bg-indigo-600 dark:bg-indigo-800">
-          <Link href="/" className="flex items-center gap-2">
+          <Link href={endpoint} className="flex items-center gap-2">
             <Package className="h-6 w-6 text-white" />
             <span className="text-lg font-semibold text-white">StockMaster</span>
           </Link>
