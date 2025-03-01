@@ -38,6 +38,10 @@ export function AllProducts() {
     fetchData();
   }, []);
 
+  const endpoint = import.meta.env.VITE_ENVIRONMENT === "production" 
+      ? "https://event.nikatby.in/user/public/cart"
+      : "/cart";
+
   // Filter and sort products
   const filteredProducts = () => {
     let filtered = [...products];
@@ -76,7 +80,7 @@ export function AllProducts() {
     if (!selectedProduct || quantity <= 0) return;
 
     try {
-      const response = await axios.post("/cart", {
+      const response = await axios.post(endpoint, {
         product_id: selectedProduct.id,
         quantity,
       });
@@ -92,8 +96,7 @@ export function AllProducts() {
     }
   };
 
-  const defaultImage =
-    "https://i.pinimg.com/736x/df/9f/a9/df9fa9eb2ac17ed7794706eb5c7f877c.jpg";
+  const defaultImage = "https://i.pinimg.com/736x/df/9f/a9/df9fa9eb2ac17ed7794706eb5c7f877c.jpg";
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 bg-gradient-to-br from-indigo-50 via-gray-100 to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-indigo-900 min-h-screen">
@@ -102,7 +105,7 @@ export function AllProducts() {
         <h1 className="text-3xl sm:text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-purple-600 dark:from-indigo-400 dark:to-purple-400 tracking-tight">
           All Products
         </h1>
-        <Link href="/cart">
+        <Link href={endpoint}>
           <Button
             variant="outline"
             className="flex items-center gap-2 text-indigo-600 dark:text-indigo-300 border-indigo-600 dark:border-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900 transition-all duration-300 shadow-md"

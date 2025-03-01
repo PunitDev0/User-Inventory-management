@@ -102,9 +102,12 @@ export default function OrderPage({ id }) {
           timer: 3000, // Auto-close after 3 seconds
           timerProgressBar: true,
         });
+        const endpoint = import.meta.env.VITE_ENVIRONMENT === "production" 
+        ? "https://event.nikatby.in/user/public/Userlogin"
+        : "http://127.0.0.1:8001/Userlogin";
 
         // Redirect to /home after the popup
-        Inertia.visit("/Home");
+        Inertia.visit(endpoint);
       }
 
       reset({

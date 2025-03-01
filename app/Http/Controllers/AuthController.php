@@ -30,7 +30,7 @@ class AuthController extends Controller
     
                 return response()->json([
                     'message' => 'Login successful',
-                    'redirect' => env('ENVIRONMENT') === 'production' 
+                    'redirect' => env('VITE_ENVIRONMENT') === 'production' 
                     ? '/user/public/Home' 
                     : '/Home', // Dynamic redirect based on environment
 
@@ -86,7 +86,7 @@ class AuthController extends Controller
         Auth::logout();
     
         // Redirect dynamically based on environment
-        $redirectPath = env('ENVIRONMENT') === 'production' 
+        $redirectPath = env('VITE_ENVIRONMENT') === 'production' 
             ? '/user/public'   // Production logout path
             : '/';  // Local logout path
     

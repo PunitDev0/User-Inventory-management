@@ -2,11 +2,11 @@ import axios from "axios";
 
 const API_URL = import.meta.env.VITE_ENVIRONMENT === "production"
   ? "https://event.nikatby.in/user/public/api/products"   // Production API URL
-  : "http://127.0.0.1:8001/api/products";  // Local development API URL
+  : "/api/products";  // Local development API URL
 
 const Category_URL = import.meta.env.VITE_ENVIRONMENT === "production"
   ? "https://event.nikatby.in/user/public/api/categories"   // Production API URL
-  : "http://127.0.0.1:8001/api/categories";  // Local development API URL
+  : "/api/categories";  // Local development API URL
 
 
 
