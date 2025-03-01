@@ -198,7 +198,11 @@ export default function Checkout({ cartItems }) {
       setProducts([]);
       setError("");
       setAvailabilityStatus({});
-      Inertia.visit("/AllProduct");
+      const endpoint =
+      import.meta.env.VITE_ENVIRONMENT === "production"
+        ? "https://event.nikatby.in/user/public/AllProduct"
+        : "/AllProduct";
+      Inertia.visit(endpoint);
     } catch (err) {
       console.error("Error placing order", err);
       Swal.fire({
