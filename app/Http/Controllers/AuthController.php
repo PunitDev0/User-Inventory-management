@@ -87,7 +87,7 @@ class AuthController extends Controller
     
         // Redirect dynamically based on environment
         $redirectPath = env('VITE_ENVIRONMENT') === 'production' 
-            ? '/user/public'   // Production logout path
+            ? 'https://event.nikatby.in/user/public'   // Production logout path
             : '/';  // Local logout path
     
         return redirect($redirectPath);
