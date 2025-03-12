@@ -22,6 +22,10 @@ export function ProductsPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isOrderModalOpen, setIsOrderModalOpen] = useState(false);
   const [cart, setCart] = useState([]);
+  const API_URL =
+  import.meta.env.VITE_ENVIRONMENT === "production"
+    ? "https://event.nikatby.in/user/public/cart"
+    : "/cart";
 
   useEffect(() => {
     const fetchData = async () => {
@@ -74,10 +78,7 @@ export function ProductsPage() {
     }
 
     try {
-      const API_URL =
-        import.meta.env.VITE_ENVIRONMENT === "production"
-          ? "https://event.nikatby.in/user/public/cart"
-          : "http://127.0.0.1:8001/cart";
+     
 
       const response = await axios.post(API_URL, {
         product_id: selectedProduct.id,
@@ -103,7 +104,7 @@ export function ProductsPage() {
       {/* Header */}
       <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
        
-        <Link href="/cart">
+        <Link href={`${API_URL}`}>
           <Button
             variant="outline"
             className="flex items-center gap-2 text-indigo-700 dark:text-indigo-300 border-indigo-700 dark:border-indigo-400 hover:bg-indigo-200 dark:hover:bg-indigo-800 transition-all duration-300 shadow-lg hover:shadow-xl rounded-full px-6 py-2"
