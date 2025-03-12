@@ -1,0 +1,1 @@
+import{a as d}from"./app-CnuuUVAv.js";const i=async c=>{var r,a,o;try{const t=await d.get("undefined/getproducts",{params:{id:c}});return console.log(t),(r=t==null?void 0:t.data)!=null&&r.product?(a=t==null?void 0:t.data)==null?void 0:a.product:(o=t==null?void 0:t.data)==null?void 0:o.products}catch(t){throw console.error("Error fetching products",t),t}};export{i as f};

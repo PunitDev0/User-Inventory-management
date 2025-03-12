@@ -1,0 +1,1 @@
+import{j as r}from"./app-CnuuUVAv.js";import{P as t}from"./products-page-BS90YzEj.js";import"./index-Fdi4hGc0.js";import"./card-DFevLNd8.js";import"./input-BAMlnd9k.js";import"./index-9eWm-de7.js";import"./dialog-BeYZtdij.js";import"./Api-DcUHNoqF.js";import"./indian-rupee-BpsN2FII.js";function x(){return r.jsx(Layout,{children:r.jsx(t,{})})}export{x as default};
