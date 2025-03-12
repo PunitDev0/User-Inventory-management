@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\SupportController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CartController;
 use App\Http\Controllers\OrderController;
@@ -38,6 +39,9 @@ Route::get('orders', function () {
 });
 Route::get('AllProduct', function () {
     return Inertia::render('AllProducts');
+});
+Route::get('Support', function () {
+    return Inertia::render('SubmitSupport');
 });
 Route::get('checkout', function () {
 
@@ -121,8 +125,9 @@ Route::post('cart', [CartController::class, 'store']);
             Route::get('/', [ProductsController::class, 'getAllCategories']); // Get all categories
 
         });
-
-        
-
+        Route::prefix('support')->group(function () {
+            Route::post('/', [SupportController::class, 'store']); // Store support request
+            Route::get('/', [SupportController::class, 'index']); // Store support request
+        });
     });
     
