@@ -140,7 +140,7 @@ export default function ExpenseForm() {
       );
       const allExpenses = [...filledExpenses, ...(values.otherExpenses || [])];
 
-      const response = await api.post("http://127.0.0.1:8000/api/expenses", {
+      const response = await api.post(`${import.meta.env.VITE_API_BASE_URL}/api/expenses`, {
         order_id: values.orderId,
         expenses: allExpenses,
         expense_date: format(values.expenseDate, "yyyy-MM-dd"),

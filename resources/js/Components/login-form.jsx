@@ -36,7 +36,7 @@ export function LoginForm({ className, ...props }) {
 
     try {
       const endpoint = import.meta.env.VITE_ENVIRONMENT === "production" 
-      ? "https://event.nikatby.in/user/public/Userlogin"
+      ? `${import.meta.env.VITE_API_BASE_URL}/Userlogin`
       : "Userlogin";
     
     const response = await axios.post(endpoint, {

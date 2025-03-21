@@ -103,7 +103,7 @@ export default function OrderPage({ id }) {
           timerProgressBar: true,
         });
         const endpoint = import.meta.env.VITE_ENVIRONMENT === "production" 
-        ? "https://event.nikatby.in/user/public/Userlogin"
+        ? `${import.meta.env.VITE_API_BASE_URL}/Userlogin`
         : "http://127.0.0.1:8001/Userlogin";
 
         // Redirect to /home after the popup

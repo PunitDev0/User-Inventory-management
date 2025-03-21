@@ -1,7 +1,7 @@
 import axios from "axios";
 
 const API_URL = import.meta.env.VITE_ENVIRONMENT === "production"
-  ? "https://event.nikatby.in/user/public/api/order"   // Production API URL
+  ? `${import.meta.env.VITE_API_BASE_URL}/api/order`   // Production API URL
   : "/api/order";  // Local development API URL
 
 

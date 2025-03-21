@@ -24,7 +24,7 @@ const CartPage = ({ cartItems }) => {
     try {
       const API_URL =
         import.meta.env.VITE_ENVIRONMENT === "production"
-          ? "https://event.nikatby.in/user/public/cart/update"
+          ? `${import.meta.env.VITE_API_BASE_URL}/cart/update`
           : "http://127.0.0.1:8001/cart/update";
 
       await axios.put(API_URL, {
@@ -45,7 +45,7 @@ const CartPage = ({ cartItems }) => {
     try {
       const API_URL =
         import.meta.env.VITE_ENVIRONMENT === "production"
-          ? "https://event.nikatby.in/user/public/cart/remove"
+          ? `${import.meta.env.VITE_API_BASE_URL}/cart/remove`
           : "http://127.0.0.1:8001/cart/remove";
 
       await axios.delete(API_URL, {

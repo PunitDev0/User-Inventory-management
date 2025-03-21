@@ -39,7 +39,7 @@ export function AllProducts() {
   }, []);
 
   const endpoint = import.meta.env.VITE_ENVIRONMENT === "production" 
-      ? "https://event.nikatby.in/user/public/cart"
+      ? `${import.meta.env.VITE_API_BASE_URL}/cart`
       : "/cart";
 
   // Filter and sort products

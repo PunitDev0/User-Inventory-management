@@ -87,7 +87,7 @@ export default function Checkout({ cartItems }) {
 
       const API_URL =
         import.meta.env.VITE_ENVIRONMENT === "production"
-          ? "https://event.nikatby.in/user/public/api/check-availability"
+          ? `${import.meta.env.VITE_API_BASE_URL}/api/check-availability`
           : "api/check-availability";
 
       const response = await axios.post(API_URL, availabilityData);

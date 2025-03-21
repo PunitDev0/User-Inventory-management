@@ -24,7 +24,7 @@ export function ProductsPage() {
   const [cart, setCart] = useState([]);
   const API_URL =
   import.meta.env.VITE_ENVIRONMENT === "production"
-    ? "https://event.nikatby.in/user/public/cart"
+    ? `${import.meta.env.VITE_API_BASE_URL}/cart`
     : "/cart";
 
   useEffect(() => {
