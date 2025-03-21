@@ -157,7 +157,7 @@ export default function ExpenseForm() {
       );
       const allExpensesData = [...filledExpenses, ...(values.otherExpenses || [])];
 
-      const response = await axios.post(`${import.meta.env.VITE_API_BASE_URL}public/api/expenses`, {
+      const response = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/api/expenses`, {
         order_id: values.orderId,
         expenses: allExpensesData,
         expense_date: format(values.expenseDate, "yyyy-MM-dd"),
