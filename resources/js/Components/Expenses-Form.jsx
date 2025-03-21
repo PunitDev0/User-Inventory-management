@@ -48,12 +48,7 @@ const expenseTypes = [
   { value: "miscellaneous", label: "Miscellaneous" },
 ];
 
-const api = axios.create({
-  baseURL: "http://127.0.0.1:8000/api",
-  headers: {
-    "Content-Type": "application/json",
-  },
-});
+
 
 export default function ExpenseForm() {
   const [selectedOrder, setSelectedOrder] = useState(null);
@@ -77,7 +72,7 @@ export default function ExpenseForm() {
         }));
         setFetchedOrders(parsedOrders || []);
 
-        const expensesResponse = await api.get('/expenses');
+        const expensesResponse = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/expenses`);
         setAllExpenses(expensesResponse.data.data || []);
         setFilteredExpenses(expensesResponse.data.data || []);
       } catch (error) {
