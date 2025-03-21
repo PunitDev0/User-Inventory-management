@@ -8,6 +8,16 @@ import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import orderService from "@/lib/Services/orders";
 import payment from "@/lib/Services/paypendingpayment";
+import axios from "axios";
+import { format, parseISO } from "date-fns"; // Add parseISO for parsing ISO dates
+
+
+const api = axios.create({
+  baseURL: "http://127.0.0.1:8000/api",
+  headers: {
+    "Content-Type": "application/json",
+  },
+});
 
 export function UserOrdersPage() {
   const [orders, setOrders] = useState([]);
@@ -22,9 +32,10 @@ export function UserOrdersPage() {
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
+  const [orderExpenses, setOrderExpenses] = useState([]);
 
   useEffect(() => {
-    const fetchOrders = async () => {
+    const fetchData = async () => {
       try {
         const response = await orderService.getUserOrders();
         const parsedOrders = response.orders.map((order) => ({
@@ -32,14 +43,17 @@ export function UserOrdersPage() {
           products: typeof order.products === "string" ? JSON.parse(order.products) : order.products,
         }));
         setOrders(parsedOrders || []);
+
+        const expensesResponse = await api.get('/expenses');
+        setOrderExpenses(expensesResponse.data.data || []);
       } catch (error) {
-        console.error("Error fetching orders:", error);
-        setError("Failed to fetch orders. Please try again later.");
+        console.error("Error fetching data:", error);
+        setError("Failed to fetch data. Please try again later.");
       } finally {
         setLoading(false);
       }
     };
-    fetchOrders();
+    fetchData();
   }, []);
 
   const endOfDay = (dateStr) => {
@@ -126,6 +140,13 @@ export function UserOrdersPage() {
     } catch (error) {
       toast.error(error.response?.data?.error || "Failed to cancel the order.");
     }
+  };
+
+  const calculateTotalExpenses = (orderId) => {
+    const expensesForOrder = orderExpenses.filter(exp => exp.order_id === orderId.toString());
+    return expensesForOrder.reduce((total, exp) => 
+      total + exp.expenses.reduce((sum, item) => sum + parseFloat(item.amount || 0), 0), 0
+    ).toFixed(2);
   };
 
   if (loading) return <div className="flex justify-center items-center min-h-screen text-gray-500">Loading...</div>;
@@ -416,68 +437,102 @@ export function UserOrdersPage() {
 
       {/* Order Details Dialog */}
       <Dialog open={isDetailsDialogOpen} onOpenChange={setIsDetailsDialogOpen}>
-        <DialogContent className="sm:max-w-lg bg-white dark:bg-gray-800">
+        <DialogContent className="max-w-full sm:max-w-lg bg-white dark:bg-gray-800 p-4 sm:p-6">
           <DialogHeader>
-            <DialogTitle className="text-gray-800 dark:text-gray-100">Order Details - #{selectedOrder?.id}</DialogTitle>
+            <DialogTitle className="text-xl sm:text-2xl font-bold text-gray-800 dark:text-gray-100">Order Details - #{selectedOrder?.id}</DialogTitle>
           </DialogHeader>
           {selectedOrder && (
-            <div className="space-y-3 text-gray-700 dark:text-gray-300">
-              <div><strong>Created:</strong> {formatDate(selectedOrder.created_at)}</div>
-              <div><strong>Phone:</strong> {selectedOrder.user_phone}</div>
-              <div><strong>Delivered:</strong> {formatDate(selectedOrder.delivered_date)}</div>
-              <div>
-                <strong>Address:</strong> {selectedOrder.user_address}, {selectedOrder.user_city}, {selectedOrder.user_zip}
-              </div>
-              <div>
-                <strong>Total Amount:</strong>{" "}
-                <span className="flex items-center gap-1">
-                  <IndianRupee size={15} /> {Number(selectedOrder.total_amount).toFixed(2)}
-                </span>
-              </div>
-              <div>
-                <strong>Pending:</strong>{" "}
-                <span className="flex items-center gap-1">
-                  <IndianRupee size={15} /> {Number(selectedOrder.pending_payment).toFixed(2)}
-                </span>
-              </div>
-              <div>
-                <strong>Paid:</strong>{" "}
-                <span className="flex items-center gap-1">
-                  <IndianRupee size={15} /> {Number(selectedOrder.paid_payment).toFixed(2)}
-                </span>
-              </div>
-              <div>
-                <strong>Status:</strong>{" "}
-                <span
-                  className={`font-semibold ${
-                    selectedOrder.status === "pending"
-                      ? "text-red-600"
-                      : selectedOrder.status === "canceled"
-                      ? "text-orange-600"
-                      : "text-green-600"
-                  }`}
-                >
-                  {selectedOrder.status.charAt(0).toUpperCase() + selectedOrder.status.slice(1)}
-                </span>
+            <div className="space-y-4 text-gray-700 dark:text-gray-300 text-sm sm:text-base">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div><strong>Created:</strong> {formatDate(selectedOrder.created_at)}</div>
+                <div><strong>Phone:</strong> {selectedOrder.user_phone}</div>
+                <div><strong>Delivered:</strong> {formatDate(selectedOrder.delivered_date)}</div>
+                <div>
+                  <strong>Address:</strong> {selectedOrder.user_address}, {selectedOrder.user_city}, {selectedOrder.user_zip}
+                </div>
+                <div>
+                  <strong>Total Amount:</strong>{" "}
+                  <span className="flex items-center gap-1">
+                    <IndianRupee size={15} /> {Number(selectedOrder.total_amount).toFixed(2)}
+                  </span>
+                </div>
+                <div>
+                  <strong>Pending:</strong>{" "}
+                  <span className="flex items-center gap-1">
+                    <IndianRupee size={15} /> {Number(selectedOrder.pending_payment).toFixed(2)}
+                  </span>
+                </div>
+                <div>
+                  <strong>Paid:</strong>{" "}
+                  <span className="flex items-center gap-1">
+                    <IndianRupee size={15} /> {Number(selectedOrder.paid_payment).toFixed(2)}
+                  </span>
+                </div>
+                <div>
+                  <strong>Status:</strong>{" "}
+                  <span
+                    className={`font-semibold ${
+                      selectedOrder.status === "pending"
+                        ? "text-red-600"
+                        : selectedOrder.status === "canceled"
+                        ? "text-orange-600"
+                        : "text-green-600"
+                    }`}
+                  >
+                    {selectedOrder.status.charAt(0).toUpperCase() + selectedOrder.status.slice(1)}
+                  </span>
+                </div>
               </div>
               <div>
                 <strong>Products:</strong>
-                <ul className="list-disc pl-5 mt-2 space-y-1">
+                <ul className="list-disc pl-5 mt-2 space-y-2">
                   {selectedOrder.products.map((product, index) => (
-                    <li key={index} className="flex flex-col sm:flex-row sm:items-center sm:gap-2">
-                      <span className="flex items-center">
+                    <li key={index} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                      <span className="flex items-center gap-1">
                         {product.product_name} - {product.quantity} x <IndianRupee size={14} /> {Number(product.product_price).toFixed(2)} ={" "}
                         <IndianRupee size={14} /> {Number(product.total_price).toFixed(2)}
                       </span>
-                      <span className="text-gray-500 dark:text-gray-400 text-sm">(From: {product.From})</span>
+                      <span className="text-gray-500 dark:text-gray-400 text-xs sm:text-sm">(From: {product.From})</span>
                     </li>
                   ))}
                 </ul>
               </div>
+              <div>
+                <strong>Expenses:</strong>
+                {orderExpenses.filter(exp => exp.order_id === selectedOrder.id.toString()).length > 0 ? (
+                  <div className="mt-2 space-y-3">
+                    {orderExpenses
+                      .filter(exp => exp.order_id === selectedOrder.id.toString())
+                      .map((expense, index) => (
+                        <div key={index} className="border-t pt-2">
+                          <p className="font-medium"><strong>Date:</strong> {format(parseISO(expense.expense_date), "yyyy-MM-dd")}</p>
+                          <ul className="list-disc pl-5 mt-1 space-y-1">
+                            {expense.expenses.map((item, idx) => (
+                              <li key={idx} className="flex items-center gap-1">
+                                <span>{item.type}:</span>
+                                <span className="flex items-center">
+                                  <IndianRupee size={14} /> {Number(item.amount).toFixed(2)}
+                                </span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      ))}
+                    <p className="mt-2 font-medium">
+                      <strong>Total Expenses:</strong>{" "}
+                      <span className="flex items-center gap-1">
+                        <IndianRupee size={15} /> {calculateTotalExpenses(selectedOrder.id)}
+                      </span>
+                    </p>
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">No expenses recorded for this order.</p>
+                )}
+              </div>
             </div>
           )}
-          <DialogFooter className="mt-4">
-            <Button onClick={() => setIsDetailsDialogOpen(false)} className="bg-gray-600 hover:bg-gray-700">
+          <DialogFooter className="mt-6">
+            <Button onClick={() => setIsDetailsDialogOpen(false)} className="bg-gray-600 hover:bg-gray-700 w-full sm:w-auto">
               Close
             </Button>
           </DialogFooter>

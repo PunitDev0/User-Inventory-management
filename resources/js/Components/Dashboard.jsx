@@ -8,12 +8,12 @@ import {
 } from "@/components/ui/card";
 import {
   CheckCircle,
-  Clock,
   Package,
   TrendingUp,
   Users,
   DollarSign,
   IndianRupee,
+  Wallet,
 } from "lucide-react";
 import {
   AreaChart,
@@ -35,7 +35,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import orderServive from "@/lib/Services/orders";
+import orderService from "@/lib/Services/orders";
+import axios from "axios";
+
+// API instance for expenses
+const api = axios.create({
+  baseURL: "http://127.0.0.1:8000/api",
+  headers: {
+    "Content-Type": "application/json",
+  },
+});
 
 // Helper functions
 const getLastNDays = (n) => {
@@ -79,7 +88,7 @@ const getOrdersInRange = (orders, days) => {
 
 const getTop5Users = (orders) => {
   const userOrderCount = orders.reduce((acc, order) => {
-    const userId = order.user_id || "unknown"; // Fallback for missing user_id
+    const userId = order.user_id || "unknown";
     acc[userId] = (acc[userId] || 0) + 1;
     return acc;
   }, {});
@@ -96,6 +105,37 @@ const getTop5Users = (orders) => {
 const getTotalRevenue = (orders) => {
   return orders.reduce(
     (total, order) => total + parseFloat(order.paid_payment || 0),
+    0
+  );
+};
+
+const getTotalExpenses = (expenses, ordersInRange) => {
+  const orderIdsInRange = new Set(ordersInRange.map(order => order.id.toString()));
+  return expenses
+    .filter(expense => orderIdsInRange.has(expense.order_id))
+    .reduce((total, expense) => 
+      total + expense.expenses.reduce((sum, item) => sum + parseFloat(item.amount || 0), 0), 
+      0
+    );
+};
+
+const getTotalActualPayAmount = (orders) => {
+  return orders.reduce(
+    (total, order) => total + parseFloat(order.total_amount || 0),
+    0
+  );
+};
+
+const getTotalPaidAmount = (orders) => {
+  return orders.reduce(
+    (total, order) => total + parseFloat(order.paid_payment || 0),
+    0
+  );
+};
+
+const getTotalPendingAmount = (orders) => {
+  return orders.reduce(
+    (total, order) => total + parseFloat(order.pending_payment || 0),
     0
   );
 };
@@ -119,28 +159,31 @@ const COLORS = ["#6b7280", "#f97316", "#22c55e", "#3b82f6", "#a855f7"];
 const Dashboard = () => {
   const [companyOrders, setCompanyOrders] = useState([]);
   const [userOrders, setUserOrders] = useState([]);
+  const [expenses, setExpenses] = useState([]);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [timeRange, setTimeRange] = useState("All"); // Default to All data
+  const [timeRange, setTimeRange] = useState("All");
 
   useEffect(() => {
-    const fetchOrders = async () => {
+    const fetchData = async () => {
       try {
-        const [companyResponse, userResponse] = await Promise.all([
-          orderServive.getAllOrders(),
-          orderServive.getUserOrders(),
+        const [companyResponse, userResponse, expensesResponse] = await Promise.all([
+          orderService.getAllOrders(),
+          orderService.getUserOrders(),
+          api.get('/expenses'),
         ]);
         setCompanyOrders(companyResponse.orders || []);
         setUserOrders(userResponse.orders || []);
+        setExpenses(expensesResponse.data.data || []);
       } catch (err) {
-        setError("Failed to fetch orders. Please try again later.");
-        console.error("Error fetching orders:", err);
+        setError("Failed to fetch data. Please try again later.");
+        console.error("Error fetching data:", err);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchOrders();
+    fetchData();
   }, []);
 
   if (loading) {
@@ -165,7 +208,11 @@ const Dashboard = () => {
   const dates = days === "All" ? [] : getLastNDays(days);
   const filteredOrders = getOrdersInRange(userOrders, days);
   const top5Users = getTop5Users(filteredOrders);
-  const totalRevenue = getTotalRevenue(filteredOrders);
+  const totalExpensesAmount = getTotalExpenses(expenses, filteredOrders);
+  const totalActualPayAmount = getTotalActualPayAmount(filteredOrders);
+  const totalPaidAmount = getTotalPaidAmount(filteredOrders);
+  const totalPendingAmount = getTotalPendingAmount(filteredOrders);
+  const netRevenue = totalPaidAmount - totalExpensesAmount;
   const successfulPayments = filteredOrders.filter(
     (order) => order.status === "paid"
   );
@@ -207,7 +254,7 @@ const Dashboard = () => {
       </div>
 
       {/* Summary Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-6 sm:mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-4 gap-4 sm:gap-6 mb-6 sm:mb-8">
         <Card className="shadow-md hover:shadow-lg transition-shadow duration-300 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
           <CardHeader className="bg-indigo-50 dark:bg-indigo-900 p-4 rounded-t-lg">
             <CardTitle className="flex items-center gap-2 text-gray-800 dark:text-gray-100 text-lg sm:text-xl font-semibold">
@@ -233,7 +280,7 @@ const Dashboard = () => {
           </CardHeader>
           <CardContent className="p-4">
             <p className="text-3xl sm:text-4xl font-bold text-teal-600 dark:text-teal-400">
-              {userOrders.length}
+              {filteredOrders.length}
             </p>
           </CardContent>
         </Card>
@@ -254,16 +301,76 @@ const Dashboard = () => {
         </Card>
 
         <Card className="shadow-md hover:shadow-lg transition-shadow duration-300 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+          <CardHeader className="bg-blue-50 dark:bg-blue-900 p-4 rounded-t-lg">
+            <CardTitle className="flex items-center gap-2 text-gray-800 dark:text-gray-100 text-lg sm:text-xl font-semibold">
+              <Wallet className="w-6 h-6 sm:w-7 sm:h-7 text-blue-600 dark:text-blue-400" />
+              Total Order Amount
+            </CardTitle>
+            <CardDescription className="text-gray-600 dark:text-gray-400 text-sm">Total amount owed</CardDescription>
+          </CardHeader>
+          <CardContent className="p-4">
+            <p className="text-3xl sm:text-4xl font-bold text-blue-600 dark:text-blue-400 flex items-center">
+              <IndianRupee size={20} className="mr-1" /> {totalActualPayAmount.toFixed(2)}
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card className="shadow-md hover:shadow-lg transition-shadow duration-300 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+          <CardHeader className="bg-purple-50 dark:bg-purple-900 p-4 rounded-t-lg">
+            <CardTitle className="flex items-center gap-2 text-gray-800 dark:text-gray-100 text-lg sm:text-xl font-semibold">
+              <DollarSign className="w-6 h-6 sm:w-7 sm:h-7 text-purple-600 dark:text-purple-400" />
+              Total Paid Amount
+            </CardTitle>
+            <CardDescription className="text-gray-600 dark:text-gray-400 text-sm">Total payments received</CardDescription>
+          </CardHeader>
+          <CardContent className="p-4">
+            <p className="text-3xl sm:text-4xl font-bold text-purple-600 dark:text-purple-400 flex items-center">
+              <IndianRupee size={20} className="mr-1" /> {totalPaidAmount.toFixed(2)}
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card className="shadow-md hover:shadow-lg transition-shadow duration-300 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+          <CardHeader className="bg-orange-50 dark:bg-orange-900 p-4 rounded-t-lg">
+            <CardTitle className="flex items-center gap-2 text-gray-800 dark:text-gray-100 text-lg sm:text-xl font-semibold">
+              <DollarSign className="w-6 h-6 sm:w-7 sm:h-7 text-orange-600 dark:text-orange-400" />
+              Total Pending Amount
+            </CardTitle>
+            <CardDescription className="text-gray-600 dark:text-gray-400 text-sm">Total amount pending</CardDescription>
+          </CardHeader>
+          <CardContent className="p-4">
+            <p className="text-3xl sm:text-4xl font-bold text-orange-600 dark:text-orange-400 flex items-center">
+              <IndianRupee size={20} className="mr-1" /> {totalPendingAmount.toFixed(2)}
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card className="shadow-md hover:shadow-lg transition-shadow duration-300 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+          <CardHeader className="bg-red-50 dark:bg-red-900 p-4 rounded-t-lg">
+            <CardTitle className="flex items-center gap-2 text-gray-800 dark:text-gray-100 text-lg sm:text-xl font-semibold">
+              <DollarSign className="w-6 h-6 sm:w-7 sm:h-7 text-red-600 dark:text-red-400" />
+              Total Expenses
+            </CardTitle>
+            <CardDescription className="text-gray-600 dark:text-gray-400 text-sm">All recorded expenses</CardDescription>
+          </CardHeader>
+          <CardContent className="p-4">
+            <p className="text-3xl sm:text-4xl font-bold text-red-600 dark:text-red-400 flex items-center">
+              <IndianRupee size={20} className="mr-1" /> {totalExpensesAmount.toFixed(2)}
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card className="shadow-md hover:shadow-lg transition-shadow duration-300 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
           <CardHeader className="bg-yellow-50 dark:bg-yellow-900 p-4 rounded-t-lg">
             <CardTitle className="flex items-center gap-2 text-gray-800 dark:text-gray-100 text-lg sm:text-xl font-semibold">
               <DollarSign className="w-6 h-6 sm:w-7 sm:h-7 text-yellow-600 dark:text-yellow-400" />
-              Total Revenue
+              Net Revenue
             </CardTitle>
-            <CardDescription className="text-gray-600 dark:text-gray-400 text-sm">Revenue from all orders</CardDescription>
+            <CardDescription className="text-gray-600 dark:text-gray-400 text-sm">Revenue after expenses</CardDescription>
           </CardHeader>
           <CardContent className="p-4">
             <p className="text-3xl sm:text-4xl font-bold text-yellow-600 dark:text-yellow-400 flex items-center">
-              <IndianRupee size={20} sm:size={24} className="mr-1" /> {totalRevenue.toFixed(2)}
+              <IndianRupee size={20} className="mr-1" /> {netRevenue.toFixed(2)}
             </p>
           </CardContent>
         </Card>
@@ -283,7 +390,7 @@ const Dashboard = () => {
             </CardDescription>
           </CardHeader>
           <CardContent className="p-4 sm:p-6">
-            <ResponsiveContainer width="100%" minHeight={300}>
+            <ResponsiveContainer width="100%" height={300}>
               {companyChartData.length > 0 ? (
                 <AreaChart data={companyChartData}>
                   <defs>
@@ -343,7 +450,7 @@ const Dashboard = () => {
             </CardDescription>
           </CardHeader>
           <CardContent className="p-4 sm:p-6">
-            <ResponsiveContainer width="100%" minHeight={300}>
+            <ResponsiveContainer width="100%" height={300}>
               {userChartData.length > 0 ? (
                 <AreaChart data={userChartData}>
                   <defs>
@@ -403,7 +510,7 @@ const Dashboard = () => {
             </CardDescription>
           </CardHeader>
           <CardContent className="p-4 sm:p-6">
-            <ResponsiveContainer width="100%" minHeight={300}>
+            <ResponsiveContainer width="100%" height={300}>
               {successfulPaymentsData.length > 0 ? (
                 <AreaChart data={successfulPaymentsData}>
                   <defs>
@@ -453,9 +560,9 @@ const Dashboard = () => {
 
         {/* Pending Payments Chart */}
         <Card className="shadow-md hover:shadow-lg transition-shadow duration-300 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
-          <CardHeader className="bg-yellow-50 dark:bg-yellow-900 p-4 rounded-t-lg">
+          <CardHeader className="bg-orange-50 dark:bg-orange-900 p-4 rounded-t-lg">
             <CardTitle className="flex items-center gap-2 text-gray-800 dark:text-gray-100 text-lg sm:text-xl font-semibold">
-              <TrendingUp className="w-6 h-6 sm:w-7 sm:h-7 text-yellow-600 dark:text-yellow-400" />
+              <TrendingUp className="w-6 h-6 sm:w-7 sm:h-7 text-orange-600 dark:text-orange-400" />
               Pending Payments Trend
             </CardTitle>
             <CardDescription className="text-gray-600 dark:text-gray-400 text-sm">
@@ -463,7 +570,7 @@ const Dashboard = () => {
             </CardDescription>
           </CardHeader>
           <CardContent className="p-4 sm:p-6">
-            <ResponsiveContainer width="100%" minHeight={300}>
+            <ResponsiveContainer width="100%" height={300}>
               {pendingPaymentsData.length > 0 ? (
                 <AreaChart data={pendingPaymentsData}>
                   <defs>
@@ -533,7 +640,7 @@ const Dashboard = () => {
             </div>
           </CardHeader>
           <CardContent className="p-4 sm:p-6">
-            <ResponsiveContainer width="100%" minHeight={300} sm:minHeight={400}>
+            <ResponsiveContainer width="100%" height={300}>
               {top5Users.length > 0 ? (
                 <PieChart>
                   <Pie

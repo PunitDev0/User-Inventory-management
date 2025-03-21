@@ -21,7 +21,7 @@ class Expense extends Model
     public static $rules = [
         'order_id' => 'required|string|max:255',
         'expenses' => 'required|array|min:1',
-        'expenses.*.type' => 'required|string|in:manpower,food,fair,fuel,staffAdvance,miscellaneous,other',
+        'expenses.*.type' => 'required|string|',
         'expenses.*.amount' => 'required|numeric|min:0',
         'expense_date' => 'required|date',
     ];
