@@ -3,6 +3,7 @@
 use App\Http\Controllers\SupportController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CartController;
+use App\Http\Controllers\ExpenseController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\OrdersController;
 use App\Http\Controllers\PendingPaymentController;
@@ -39,6 +40,9 @@ Route::get('orders', function () {
 });
 Route::get('AllProduct', function () {
     return Inertia::render('AllProducts');
+});
+Route::get('Expenses', function () {
+    return Inertia::render('Expenses_form');
 });
 Route::get('Support', function () {
     return Inertia::render('SubmitSupport');
@@ -128,6 +132,12 @@ Route::post('cart', [CartController::class, 'store']);
         Route::prefix('support')->group(function () {
             Route::post('/', [SupportController::class, 'store']); // Store support request
             Route::get('/', [SupportController::class, 'index']); // Store support request
+        });
+
+        Route::prefix('expenses')->group(function () {
+            Route::post('/', [ExpenseController::class, 'store']);
+            Route::get('/', [ExpenseController::class, 'index']);
+            Route::get('/{id}', [ExpenseController::class, 'show']);
         });
     });
     

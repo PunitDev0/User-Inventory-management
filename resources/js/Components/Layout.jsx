@@ -1,5 +1,5 @@
 import { Link, usePage } from "@inertiajs/react";
-import { BarChart3, Bell, Box, History, LayoutDashboard, Package, Settings, ShoppingCart, Users, LogOut, Package2, Superscript, SuperscriptIcon } from "lucide-react";
+import { BarChart3, Bell, Box, History, LayoutDashboard, Package, Settings, ShoppingCart, Users, LogOut, Package2, Superscript, SuperscriptIcon, IndianRupee } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
@@ -11,6 +11,7 @@ const navItems = [
   { title: "Cart", href: "cart", icon: ShoppingCart, color: "text-purple-600" },
   { title: "Products", href: "AllProduct", icon: Package2, color: "text-orange-600" },
   { title: "Support", href: "Support", icon: SuperscriptIcon, color: "text-orange-600" },
+  { title: "Expenses", href: "Expenses", icon: IndianRupee, color: "text-orange-600" },
 ];
 
 export function Layout({ children }) {

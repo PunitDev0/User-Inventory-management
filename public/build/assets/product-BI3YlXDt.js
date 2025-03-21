@@ -1,0 +1,1 @@
+import{a as r}from"./app-jwC8B696.js";const e="https://event.nikatby.in/user/public/api/products",s="https://event.nikatby.in/user/public/api/categories",a={getAllProducts:async()=>r.get(e),getCategories:async()=>r.get(s),getProductById:async o=>{try{return(await r.get(`${e}/${o}`)).data}catch(t){throw console.error(`Error fetching order ${orderId}:`,t),t}}};export{a as p};
