@@ -72,7 +72,7 @@ export default function ExpenseForm() {
         }));
         setFetchedOrders(parsedOrders || []);
 
-        const expensesResponse = await axios.get(`https://ims.nikatby.in/user/public/expenses`);
+        const expensesResponse = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/expenses`);
         setAllExpenses(expensesResponse.data.data || []);
         setFilteredExpenses(expensesResponse.data.data || []);
       } catch (error) {
@@ -157,7 +157,7 @@ export default function ExpenseForm() {
       );
       const allExpensesData = [...filledExpenses, ...(values.otherExpenses || [])];
 
-      const response = await axios.post(`https://ims.nikatby.in/user/public/api/expenses`, {
+      const response = await axios.post(`${import.meta.env.VITE_API_BASE_URL}public/api/expenses`, {
         order_id: values.orderId,
         expenses: allExpensesData,
         expense_date: format(values.expenseDate, "yyyy-MM-dd"),
@@ -179,7 +179,7 @@ export default function ExpenseForm() {
         });
         setSelectedOrder(null);
 
-        const expensesResponse = await axios.get(`https://ims.nikatby.in/user/public/expenses`);
+        const expensesResponse = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/expenses`);
         setAllExpenses(expensesResponse.data.data || []);
         setFilteredExpenses(expensesResponse.data.data || []);
       }
