@@ -1,1 +1,0 @@
-import{a as t}from"./app-ddHeRjmF.js";const e="http://127.0.0.1:8000/api/products",s="http://127.0.0.1:8000/api/categories",c={getAllProducts:async()=>t.get(e),getCategories:async()=>t.get(s),getProductById:async o=>{try{return(await t.get(`${e}/${o}`)).data}catch(r){throw console.error(`Error fetching order ${orderId}:`,r),r}}};export{c as p};
