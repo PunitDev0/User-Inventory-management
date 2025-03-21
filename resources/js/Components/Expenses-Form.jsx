@@ -179,7 +179,7 @@ export default function ExpenseForm() {
         });
         setSelectedOrder(null);
 
-        const expensesResponse = await api.get('/expenses');
+        const expensesResponse = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/expenses`);
         setAllExpenses(expensesResponse.data.data || []);
         setFilteredExpenses(expensesResponse.data.data || []);
       }
