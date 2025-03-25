@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useForm, useFieldArray } from "react-hook-form";
 import { CalendarIcon, Check, ChevronsUpDown, Loader2, Plus } from "lucide-react";
-import { format, parseISO, isWithinInterval } from "date-fns"; // Added isWithinInterval for date range filtering
+import { format, parseISO, isWithinInterval, differenceInDays } from "date-fns";
 import axios from "axios";
 import { toast, ToastContainer } from "react-toastify";
 
@@ -48,8 +48,6 @@ const expenseTypes = [
   { value: "miscellaneous", label: "Miscellaneous" },
 ];
 
-
-
 export default function ExpenseForm() {
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -86,7 +84,6 @@ export default function ExpenseForm() {
   }, []);
 
   useEffect(() => {
-    // Apply filters whenever filterOrderId or filterDateRange changes
     let filtered = allExpenses;
 
     if (filterOrderId) {
@@ -135,12 +132,35 @@ export default function ExpenseForm() {
       });
       return false;
     }
-    return true;
+    return true; // Removed delivered_date validation from here
   };
 
   const fetchOrderDetails = (orderId) => {
     setIsLoading(true);
     const order = fetchedOrders.find((o) => o.id.toString() === orderId);
+
+    // Validate delivered_date immediately upon selection
+    if (order && order.delivered_date) {
+      const deliveredDate = new Date(order.delivered_date); // e.g., "Tue February 25, 2025"
+      const today = new Date(); // March 24, 2025, per context
+      const daysDifference = Math.abs(differenceInDays(deliveredDate, today));
+
+      if (daysDifference > 7) {
+        toast.error("Selected order's delivery date must be within 7 days from today.");
+        setSelectedOrder(null); // Clear selection if invalid
+        form.setValue("orderId", ""); // Reset orderId in form
+        setIsLoading(false);
+        return;
+      }
+    } else {
+      toast.error("Selected order has no valid delivery date.");
+      setSelectedOrder(null);
+      form.setValue("orderId", "");
+      setIsLoading(false);
+      return;
+    }
+
+    // If valid, proceed with setting the selected order
     setTimeout(() => {
       setSelectedOrder(order || null);
       setIsLoading(false);
@@ -207,7 +227,7 @@ export default function ExpenseForm() {
       <Card className="mb-8">
         <CardHeader>
           <CardTitle className="text-2xl">Add Expense</CardTitle>
-          <CardDescription>Add a new expense related to an order</CardDescription>
+          <CardDescription>Add a new expense related to an order (within 7 days of delivery)</CardDescription>
         </CardHeader>
         <CardContent>
           <Form {...form}>
@@ -431,7 +451,7 @@ export default function ExpenseForm() {
                 )}
               />
 
-              <Button type="submit" className="w-full" disabled={isLoading}>
+              <Button type="submit" className="w-full" disabled={isLoading || !selectedOrder}>
                 {isLoading ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -453,7 +473,6 @@ export default function ExpenseForm() {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {/* Order ID Filter */}
             <div className="flex flex-col">
               <label className="text-sm font-medium mb-1">Filter by Order ID</label>
               <Popover open={filterOpen} onOpenChange={setFilterOpen}>
@@ -503,7 +522,6 @@ export default function ExpenseForm() {
               </Popover>
             </div>
 
-            {/* Date Range Filter */}
             <div className="flex flex-col">
               <label className="text-sm font-medium mb-1">Filter by Date Range</label>
               <Popover>

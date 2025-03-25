@@ -1,3 +1,4 @@
+import Dashboard from '@/Components/Dashbaord/Dashboard';
 import { Layout } from '@/Components/Layout'
 import { ProductsPage } from '@/Components/products-page'
 import React from 'react'
@@ -7,7 +8,7 @@ function Welcome() {
 console.log("API URL:", API_URL);
   return (
     <Layout>
-      <ProductsPage />
+      <Dashboard />
     </Layout>
   )
 }
