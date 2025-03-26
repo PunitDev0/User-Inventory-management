@@ -1,4 +1,3 @@
-// UpcomingDeliveries.jsx
 import React, { useState } from "react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Calendar } from "lucide-react";
@@ -12,33 +11,27 @@ import {
 
 const UpcomingDeliveries = ({ orders }) => {
   const [filter, setFilter] = useState("all"); // Filter state: "all", "week", "month"
-  const deliveryDate = new Date(orders[0].delivered_date); // Parse "Sat February 22, 2025" for comparison
-   console.log("deliver date ",deliveryDate);
-   
-  const currentDate = new Date(); // Current date (March 24, 2025, per context)
-  console.log(deliveryDate > currentDate);
   
   // Parse the delivery date string for comparison and filter upcoming deliveries
   const upcomingOrders = orders
-    .filter(order => {
-      if (!order.delivered_date) return false; // Check for delivered_date existence
-      const deliveryDate = new Date(order.delivered_date); // Parse "Sat February 22, 2025" for comparison
+    ?.filter(order => {
+      if (!order?.delivered_date) return false; // Check for delivered_date existence
+      const deliveryDate = new Date(order?.delivered_date); // Parse "Sat February 22, 2025" for comparison
       const currentDate = new Date(); // Current date (March 24, 2025, per context)
-      return !isNaN(deliveryDate.getTime()) && deliveryDate > currentDate; // Valid date and in future
+      return !isNaN(deliveryDate?.getTime()) && deliveryDate > currentDate; // Valid date and in future
     })
-    .sort((a, b) => new Date(a.delivered_date) - new Date(b.delivered_date));
-  console.log(upcomingOrders);
+    ?.sort((a, b) => new Date(a?.delivered_date) - new Date(b?.delivered_date)) || [];
   
   // Apply additional filtering based on time range
-  const filteredUpcomingOrders = upcomingOrders.filter(order => {
-    const deliveryDate = new Date(order.delivered_date);
+  const filteredUpcomingOrders = upcomingOrders?.filter(order => {
+    const deliveryDate = new Date(order?.delivered_date);
     const today = new Date();
     const diffDays = (deliveryDate - today) / (1000 * 3600 * 24);
 
     if (filter === "week") return diffDays <= 7;
     if (filter === "month") return diffDays <= 30;
     return true; // "all"
-  });
+  }) || [];
 
   return (
     <Card className="shadow-md hover:shadow-lg transition-shadow duration-300 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
@@ -73,24 +66,26 @@ const UpcomingDeliveries = ({ orders }) => {
         </div>
       </CardHeader>
       <CardContent className="p-4 sm:p-6">
-        {filteredUpcomingOrders.length > 0 ? (
+        {filteredUpcomingOrders?.length > 0 ? (
           <div className="space-y-4 max-h-[300px] overflow-y-auto">
-            {filteredUpcomingOrders.map((order) => (
-              <div key={order.id} className="flex justify-between items-center border-b pb-2 dark:border-gray-700">
+            {filteredUpcomingOrders?.map((order) => (
+              <div key={order?.id} className="flex justify-between items-center border-b pb-2 dark:border-gray-700">
                 <div>
                   <p className="text-sm font-medium text-gray-800 dark:text-gray-100">
-                    Order #{order.id} - {order.user_name || "Unknown"}
+                    Order #{order?.id} - {order?.user_name || "Unknown"}
                   </p>
                   <p className="text-xs text-gray-600 dark:text-gray-400">
-                    Status: {order.status}
+                    Status: {order?.status || "N/A"}
                   </p>
                 </div>
                 <div className="text-right">
                   <p className="text-sm font-medium text-purple-600 dark:text-purple-400">
-                    {order.delivered_date} {/* Display raw string directly */}
+                    {order?.delivered_date || "Date TBD"} {/* Display raw string directly */}
                   </p>
                   <p className="text-xs text-gray-600 dark:text-gray-400">
-                    {Math.ceil((new Date(order.delivered_date) - new Date()) / (1000 * 3600 * 24))} days
+                    {order?.delivered_date 
+                      ? Math.ceil((new Date(order?.delivered_date) - new Date()) / (1000 * 3600 * 24)) 
+                      : "N/A"} days
                   </p>
                 </div>
               </div>
