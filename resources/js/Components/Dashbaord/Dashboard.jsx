@@ -7,7 +7,6 @@ import OrdersTrendChart from "./OrdersTrendChart";
 import OrderDistributionChart from "./OrderDistributionChart";
 import UpcomingDeliveries from "./UpcomingDeliveries";
 
-// [Keep all your helper functions here - getLastNDays, getOrdersByDate, etc.]
 const getLastNDays = (n) => {
     const dates = [];
     for (let i = n - 1; i >= 0; i--) {
@@ -16,16 +15,16 @@ const getLastNDays = (n) => {
       dates.push(date.toISOString().split("T")[0]);
     }
     return dates;
-  };
+};
   
-  const getOrdersByDate = (orders, dates) => {
+const getOrdersByDate = (orders, dates) => {
     const ordersByDate = {};
     dates.forEach((date) => {
       ordersByDate[date] = 0;
     });
   
-    orders.forEach((order) => {
-      const orderDate = new Date(order.created_at).toISOString().split("T")[0];
+    orders?.forEach((order) => {
+      const orderDate = new Date(order?.created_at).toISOString().split("T")[0];
       if (ordersByDate[orderDate] !== undefined) {
         ordersByDate[orderDate]++;
       }
@@ -35,24 +34,24 @@ const getLastNDays = (n) => {
       date,
       orders: ordersByDate[date] || 0,
     }));
-  };
+};
   
-  const getOrdersInRange = (orders, days) => {
+const getOrdersInRange = (orders, days) => {
     const today = new Date();
-    return orders.filter((order) => {
-      const orderDate = new Date(order.created_at);
+    return orders?.filter((order) => {
+      const orderDate = new Date(order?.created_at);
       return days === "All"
         ? true
         : (today - orderDate) / (1000 * 3600 * 24) <= days;
-    });
-  };
+    }) || [];
+};
   
-  const getTop5Users = (orders) => {
-    const userOrderCount = orders.reduce((acc, order) => {
-      const userId = order.user_id || "unknown";
+const getTop5Users = (orders) => {
+    const userOrderCount = orders?.reduce((acc, order) => {
+      const userId = order?.user_id || "unknown";
       acc[userId] = (acc[userId] || 0) + 1;
       return acc;
-    }, {});
+    }, {}) || {};
   
     return Object.entries(userOrderCount)
       .sort(([, a], [, b]) => b - a)
@@ -61,51 +60,51 @@ const getLastNDays = (n) => {
         name: userId === "unknown" ? "Unknown User" : `User ${userId}`,
         value: count,
       }));
-  };
+};
   
-  const getTotalRevenue = (orders) => {
-    return orders.reduce(
-      (total, order) => total + parseFloat(order.paid_payment || 0),
+const getTotalRevenue = (orders) => {
+    return orders?.reduce(
+      (total, order) => total + parseFloat(order?.paid_payment || 0),
       0
-    );
-  };
+    ) || 0;
+};
   
-  const getTotalExpenses = (expenses, ordersInRange) => {
-    const orderIdsInRange = new Set(ordersInRange.map(order => order.id.toString()));
+const getTotalExpenses = (expenses, ordersInRange) => {
+    const orderIdsInRange = new Set(ordersInRange?.map(order => order?.id?.toString()));
     return expenses
-      .filter(expense => orderIdsInRange.has(expense.order_id))
-      .reduce((total, expense) => 
-        total + expense.expenses.reduce((sum, item) => sum + parseFloat(item.amount || 0), 0), 
+      ?.filter(expense => orderIdsInRange.has(expense?.order_id))
+      ?.reduce((total, expense) => 
+        total + (expense?.expenses?.reduce((sum, item) => sum + parseFloat(item?.amount || 0), 0) || 0), 
         0
-      );
-  };
+      ) || 0;
+};
   
-  const getTotalActualPayAmount = (orders) => {
-    return orders.reduce(
-      (total, order) => total + parseFloat(order.total_amount || 0),
+const getTotalActualPayAmount = (orders) => {
+    return orders?.reduce(
+      (total, order) => total + parseFloat(order?.total_amount || 0),
       0
-    );
-  };
+    ) || 0;
+};
   
-  const getTotalPaidAmount = (orders) => {
-    return orders.reduce(
-      (total, order) => total + parseFloat(order.paid_payment || 0),
+const getTotalPaidAmount = (orders) => {
+    return orders?.reduce(
+      (total, order) => total + parseFloat(order?.paid_payment || 0),
       0
-    );
-  };
+    ) || 0;
+};
   
-  const getTotalPendingAmount = (orders) => {
-    return orders.reduce(
-      (total, order) => total + parseFloat(order.pending_payment || 0),
+const getTotalPendingAmount = (orders) => {
+    return orders?.reduce(
+      (total, order) => total + parseFloat(order?.pending_payment || 0),
       0
-    );
-  };
+    ) || 0;
+};
   
-  const getAggregatedData = (orders) => {
-    if (orders.length === 0) return [];
+const getAggregatedData = (orders) => {
+    if (!orders?.length) return [];
     const dataByMonth = {};
     orders.forEach((order) => {
-      const date = new Date(order.created_at);
+      const date = new Date(order?.created_at);
       const month = date.toLocaleString("default", { month: "short", year: "numeric" });
       dataByMonth[month] = (dataByMonth[month] || 0) + 1;
     });
@@ -113,9 +112,10 @@ const getLastNDays = (n) => {
       date: month,
       orders: dataByMonth[month],
     }));
-  };
+};
   
-  const COLORS = ["#6b7280", "#f97316", "#22c55e", "#3b82f6", "#a855f7"];
+const COLORS = ["#6b7280", "#f97316", "#22c55e", "#3b82f6", "#a855f7"];
+
 const Dashboard = () => {
   const [companyOrders, setCompanyOrders] = useState([]);
   const [userOrders, setUserOrders] = useState([]);
@@ -132,9 +132,9 @@ const Dashboard = () => {
           orderService.getUserOrders(),
           axios.get('api/expenses'),
         ]);
-        setCompanyOrders(companyResponse.orders || []);
-        setUserOrders(userResponse.orders || []);
-        setExpenses(expensesResponse.data.data || []);
+        setCompanyOrders(companyResponse?.orders || []);
+        setUserOrders(userResponse?.orders || []);
+        setExpenses(expensesResponse?.data?.data || []);
       } catch (err) {
         setError("Failed to fetch data. Please try again later.");
         console.error("Error fetching data:", err);
@@ -157,8 +157,8 @@ const Dashboard = () => {
   const totalPaidAmount = getTotalPaidAmount(filteredOrders);
   const totalPendingAmount = getTotalPendingAmount(filteredOrders);
   const netRevenue = totalPaidAmount - totalExpensesAmount;
-  const successfulPayments = filteredOrders.filter(order => order.status === "paid");
-  const pendingPayments = filteredOrders.filter(order => order.status === "pending");
+  const successfulPayments = filteredOrders?.filter(order => order?.status === "paid") || [];
+  const pendingPayments = filteredOrders?.filter(order => order?.status === "pending") || [];
 
   const companyChartData = days === "All" ? getAggregatedData(companyOrders) : getOrdersByDate(companyOrders, dates);
   const userChartData = days === "All" ? getAggregatedData(filteredOrders) : getOrdersByDate(filteredOrders, dates);
@@ -211,7 +211,7 @@ const Dashboard = () => {
           color="#f39c12" gradientId="colorPending" bgClass="bg-orange-50 dark:bg-orange-900"
           iconColor="text-orange-600 dark:text-orange-400" />
         <OrderDistributionChart top5Users={top5Users} filteredOrders={filteredOrders} timeRange={timeRange} />
-        <UpcomingDeliveries orders={userOrders} /> {/* Add the new component here */}
+        <UpcomingDeliveries orders={userOrders} />
       </div>
     </div>
   );
