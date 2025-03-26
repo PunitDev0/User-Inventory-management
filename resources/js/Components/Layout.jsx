@@ -18,7 +18,7 @@ export function Layout({ children }) {
   const pathname = window.location.pathname;
   const { auth } = usePage().props;
   const endpoint = import.meta.env.VITE_ENVIRONMENT === "production" 
-      ? "https://event.nikatby.in/user/public/"
+      ? import.meta.env.VITE_API_BASE_URL
       : "/";
   const handleLogout = () => {
     Inertia.get("logout");

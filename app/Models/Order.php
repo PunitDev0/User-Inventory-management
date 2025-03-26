@@ -26,6 +26,9 @@ class Order extends Model
         'products', // Store the products as a JSON field
         'delivered_date',
         'status',
+        'billing_number',
+        'shipping_address',
+        'pickup_time'
     ];
 
     // If the products column is a JSON field, you can cast it to an array

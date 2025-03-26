@@ -225,11 +225,11 @@ export function UserOrdersPage() {
                 <TableRow key={order.id} className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
                   <TableCell className="text-gray-800 dark:text-gray-200">ARYAN{order.id}</TableCell>
                   <TableCell className="text-gray-800 dark:text-gray-200">{order.user_name}</TableCell>
-                  <TableCell className="text-gray-600 dark:text-gray-400">{formatDate(order.delivered_date)}</TableCell>
+                  <TableCell className="text-gray-600 dark:text-gray-400">{order.delivered_date}</TableCell>
                   <TableCell className="text-gray-800 dark:text-gray-200">{order.products.length} Products</TableCell>
                   <TableCell className="text-gray-800 dark:text-gray-200">{order.products.reduce((acc, p) => acc + p.quantity, 0)}</TableCell>
                   <TableCell className="text-gray-600 dark:text-gray-400">
-                    {order.user_address}, {order.user_city}, {order.user_zip}
+                    {order.shipping_address}
                   </TableCell>
                   <TableCell className="text-gray-800 dark:text-gray-200">
                     <div className="flex items-center gap-1">
@@ -446,9 +446,9 @@ export function UserOrdersPage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div><strong>Created:</strong> {formatDate(selectedOrder.created_at)}</div>
                 <div><strong>Phone:</strong> {selectedOrder.user_phone}</div>
-                <div><strong>Delivered:</strong> {formatDate(selectedOrder.delivered_date)}</div>
+                <div><strong>Delivered:</strong> {selectedOrder.delivered_date}</div>
                 <div>
-                  <strong>Address:</strong> {selectedOrder.user_address}, {selectedOrder.user_city}, {selectedOrder.user_zip}
+                  <strong>Client Address:</strong> {selectedOrder.user_address}, {selectedOrder.user_city}, {selectedOrder.user_zip}
                 </div>
                 <div>
                   <strong>Total Amount:</strong>{" "}

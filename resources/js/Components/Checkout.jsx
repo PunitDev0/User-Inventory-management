@@ -1,19 +1,18 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useForm } from "react-hook-form";
 import { Progress } from "@/components/ui/progress";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Calendar } from "@/components/ui/calendar"; // Import shadcn/ui Calendar
 import { IndianRupee, ShoppingCart } from "lucide-react";
 import axios from "axios";
 import Swal from "sweetalert2";
-import { Layout } from "./Layout"; // Assuming Layout is your updated NewLayout component
-import Calendar from "react-calendar";
-import "react-calendar/dist/Calendar.css";
+import { Layout } from "./Layout";
 import ordersService from "@/lib/Services/orders";
 import { Inertia } from "@inertiajs/inertia";
 
-export default function Checkout({ cartItems }) {
+export default function Checkout({ cartItems = [] }) {
   const {
     register,
     handleSubmit,
@@ -21,107 +20,151 @@ export default function Checkout({ cartItems }) {
     watch,
     formState: { errors },
     reset,
-  } = useForm();
-  const [products, setProducts] = useState(cartItems || []);
-  const [error, setError] = useState("");
-  const [userData, setUserData] = useState({
-    name: "",
-    email: "",
-    phone: "",
-    address: "",
-    city: "",
-    zip: "",
+    trigger
+  } = useForm({
+    defaultValues: {
+      name: "",
+      email: "",
+      phone: "",
+      userAddress: "",
+      shippingAddress: "",
+      city: "",
+      zip: "",
+      billingNumber: "",
+      bookingAmount: "",
+      paidAmount: "",
+      products: cartItems.map((item) => ({ 
+        quantity: item.quantity || 1,
+        product_id: item.product?.id
+      })),
+      deliveryDate: new Date().toISOString().split("T")[0],
+      deliveryTime: "12:00",
+      deliveryTimePeriod: "AM",
+      pickupDate: new Date().toISOString().split("T")[0],
+      pickupTime: "12:00",
+      pickupTimePeriod: "AM",
+    },
   });
-  const [deliveryDate, setDeliveryDate] = useState(new Date());
+
+  const [products, setProducts] = useState(cartItems);
+  const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [availabilityStatus, setAvailabilityStatus] = useState({});
 
-  useEffect(() => {
-    const userInfo = JSON.parse(localStorage.getItem("userInfo"));
-    if (userInfo) {
-      setUserData(userInfo);
-    }
-    if (products.length > 0) {
-      checkAvailability(deliveryDate);
-    }
-  }, [products]);
+  const API_URL = import.meta.env.VITE_ENVIRONMENT === "production"
+    ? `${import.meta.env.VITE_API_BASE_URL}/api`
+    : "/api";
 
-  const handleProductChange = (index, key, value) => {
-    const updatedProducts = [...products];
-    if (key === "quantity") {
-      if (value > updatedProducts[index].stock_quantity) {
-        setError("Quantity exceeds available stock.");
-      } else {
-        setError("");
-        updatedProducts[index][key] = value;
-        setProducts(updatedProducts);
-        setValue(`products[${index}].quantity`, value);
-        checkAvailability(deliveryDate);
-      }
-    } else {
-      updatedProducts[index][key] = value;
-      setProducts(updatedProducts);
+  useEffect(() => {
+    const userInfo = JSON.parse(localStorage.getItem("userInfo") || "{}");
+    if (userInfo) {
+      setValue("name", userInfo.name || "");
+      setValue("email", userInfo.email || "");
+      setValue("phone", userInfo.phone || "");
+      setValue("userAddress", userInfo.userAddress || userInfo.billingAddress || "");
+      setValue("shippingAddress", userInfo.shippingAddress || "");
+      setValue("city", userInfo.city || "");
+      setValue("zip", userInfo.zip || "");
+      setValue("billingNumber", userInfo.billingNumber || "");
     }
+  }, [setValue]);
+
+  // Convert to MySQL timestamp format (YYYY-MM-DD HH:MM:SS) with correct AM/PM handling
+  const toMySQLTimestamp = (date, time, period) => {
+    const [hours, minutes] = time.split(':');
+    let hour = parseInt(hours);
+    const minute = parseInt(minutes);
+
+    if (period === "PM" && hour < 12) {
+      hour += 12;
+    } else if (period === "AM" && hour === 12) {
+      hour = 0;
+    }
+
+    const dateObj = new Date(date);
+    dateObj.setHours(hour, minute, 0, 0);
+
+    return `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}-${String(dateObj.getDate()).padStart(2, '0')} ${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}:00`;
   };
 
-  const checkAvailability = async (date) => {
-    if (products.length === 0) return;
+  // Format for display purposes only
+  const formatDateTimeForDisplay = (date, time, period) => {
+    return new Date(date)
+      .toLocaleDateString("en-US", {
+        weekday: "short",
+        month: "long",
+        day: "2-digit",
+        year: "numeric",
+      })
+      .replace(/(\d+)/g, "$1")
+      .replace(",", "") + ` at ${time} ${period}`;
+  };
+
+  const checkAvailability = useCallback(async () => {
+    if (!products.length || !watch("deliveryTime") || !watch("pickupTime")) return;
 
     try {
-      const formattedDate = date
-        .toLocaleDateString("en-US", {
-          weekday: "short",
-          month: "long",
-          day: "2-digit",
-          year: "numeric",
-        })
-        .replace(",", "");
+      const deliveryTimestamp = toMySQLTimestamp(
+        watch("deliveryDate"),
+        watch("deliveryTime"),
+        watch("deliveryTimePeriod")
+      );
+      const pickupTimestamp = toMySQLTimestamp(
+        watch("pickupDate"),
+        watch("pickupTime"),
+        watch("pickupTimePeriod")
+      );
 
       const availabilityData = {
         products: products.map((product) => ({
           product_id: product.product.id,
-          quantity: product.quantity,
+          quantity: product.quantity || 1,
         })),
-        delivered_date: formattedDate,
+        delivered_date: deliveryTimestamp,
+        pickup_date: pickupTimestamp,
       };
 
-      const API_URL =
-        import.meta.env.VITE_ENVIRONMENT === "production"
-          ? `${import.meta.env.VITE_API_BASE_URL}/api/check-availability`
-          : "api/check-availability";
-
-      const response = await axios.post(API_URL, availabilityData);
+      const response = await axios.post(`${API_URL}/check-availability`, availabilityData);
       setAvailabilityStatus(response.data);
     } catch (err) {
-      console.error("Error checking availability", err);
+      console.error("Availability check error:", err);
+      setAvailabilityStatus({});
       Swal.fire({
         icon: "error",
-        title: "Error",
-        text: "Could not check availability. Please try again.",
+        title: "Availability Check Failed",
+        text: err.response?.data?.error || "Please try again",
       });
     }
+  }, [products, watch]);
+
+  const handleProductChange = (index, value) => {
+    const qty = Math.max(1, parseInt(value) || 1);
+    const updatedProducts = [...products];
+    const product = updatedProducts[index];
+    
+    if (qty > (product.product.stock_quantity || Infinity)) {
+      setError(`Only ${product.product.stock_quantity} available`);
+      return;
+    }
+
+    setError("");
+    updatedProducts[index].quantity = qty;
+    setProducts(updatedProducts);
+    setValue(`products[${index}].quantity`, qty);
+    trigger(`products[${index}].quantity`);
+    checkAvailability();
   };
 
-  const handleDateChange = (date) => {
-    setDeliveryDate(date);
-    checkAvailability(date);
-  };
-
-  const bookingPrice = products.reduce(
-    (sum, product) => sum + parseFloat(product.product.price) * product.quantity,
-    0
-  );
-
-  const bookingAmount = parseFloat(watch("booking_amount")) || 0;
-  const paidAmount = parseFloat(watch("paid_amount")) || 0;
+  const bookingAmount = parseFloat(watch("bookingAmount")) || 0;
+  const paidAmount = parseFloat(watch("paidAmount")) || 0;
   const remainingAmount = Math.max(bookingAmount - paidAmount, 0);
 
   const onSubmit = async (data) => {
-    if (Object.values(availabilityStatus).some((status) => !status.available)) {
+    if (Object.values(availabilityStatus).some((status) => !status?.available)) {
       Swal.fire({
         icon: "warning",
         title: "Stock Unavailable",
-        text: "Some products are not available on the selected delivery date.",
+        text: "Some products are not available for the selected dates",
       });
       return;
     }
@@ -130,7 +173,7 @@ export default function Checkout({ cartItems }) {
       Swal.fire({
         icon: "warning",
         title: "Invalid Booking Amount",
-        text: "Booking amount must be greater than 0.",
+        text: "Booking amount must be greater than 0",
       });
       return;
     }
@@ -139,88 +182,85 @@ export default function Checkout({ cartItems }) {
       Swal.fire({
         icon: "warning",
         title: "Invalid Paid Amount",
-        text: "Paid amount cannot exceed the booking amount.",
+        text: "Paid amount cannot exceed booking amount",
       });
       return;
     }
 
     setIsSubmitting(true);
     try {
-      const formattedDeliveryDate = deliveryDate
-        .toLocaleDateString("en-US", {
-          weekday: "short",
-          month: "long",
-          day: "2-digit",
-          year: "numeric",
-        })
-        .replace(",", "");
+      const deliveryTimestamp = toMySQLTimestamp(
+        data.deliveryDate,
+        data.deliveryTime,
+        data.deliveryTimePeriod
+      );
+      const pickupTimestamp = toMySQLTimestamp(
+        data.pickupDate,
+        data.pickupTime,
+        data.pickupTimePeriod
+      );
 
       const orderData = {
-        ...data,
-        delivered_date: formattedDeliveryDate,
+        name: data.name,
+        email: data.email,
+        phone: data.phone,
+        userAddress: data.userAddress,
+        shippingAddress: data.shippingAddress,
+        city: data.city,
+        zip: data.zip,
+        billing_number: data.billingNumber,
+        paid_amount: paidAmount,
+        total_amount: bookingAmount,
+        pending_payment: remainingAmount,
         products: products.map((product) => ({
-          product_name: product.product.productName,
           product_id: product.product.id,
           quantity: product.quantity,
-          product_price: product.product.price,
+          From: product.product.companyName || product.product.shop_name || "Unknown",
+          product_price: parseFloat(product.product.price),
           total_price: parseFloat(product.product.price) * product.quantity,
-          From: product.product.companyName || product.product.shop_name,
+          product_name: product.product.productName,
         })),
-        total_amount: bookingAmount,
-        paid_amount: paidAmount,
-        pending_payment: remainingAmount,
+        delivered_date: deliveryTimestamp,
+        pickup_time: pickupTimestamp,
+        type: "checkout",
       };
 
-      console.log("Order Data:", orderData);
-
-      const response = await ordersService.placeOrder(orderData, "checkout");
-      console.log("Order placed successfully", response.data);
+      const response = await ordersService.placeOrder(orderData);
 
       await Swal.fire({
         icon: "success",
         title: "Order Placed Successfully!",
-        text: "Your order has been confirmed. Redirecting to products page...",
-        confirmButtonText: "OK",
+        text: "Redirecting to products page...",
         timer: 3000,
         timerProgressBar: true,
       });
 
-      reset({
-        name: "",
-        email: "",
-        phone: "",
-        address: "",
-        city: "",
-        zip: "",
-        booking_amount: "",
-        paid_amount: "",
-      });
+      reset();
       setProducts([]);
       setError("");
       setAvailabilityStatus({});
-      const endpoint =
-      import.meta.env.VITE_ENVIRONMENT === "production"
+      const endpoint = import.meta.env.VITE_ENVIRONMENT === "production"
         ? "https://event.nikatby.in/user/public/AllProduct"
         : "/AllProduct";
       Inertia.visit(endpoint);
     } catch (err) {
-      console.error("Error placing order", err);
+      console.error("Order placement error:", err);
       Swal.fire({
         icon: "error",
-        title: "Oops...",
-        text: "Error placing the order. Please try again.",
+        title: "Order Failed",
+        text: err.response?.data?.error || "Please try again",
       });
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const filledFields = Object.values(watch()).filter((v) => v !== "").length;
-  const filledProduct = products.some((product) => product.quantity > 0) ? 1 : 0;
-  const progress = Math.min(
-    (filledFields + filledProduct) / (Object.keys(watch()).length + 1) * 100,
-    100
-  );
+  const calculateProgress = () => {
+    const totalFields = Object.keys(watch()).length;
+    const filledFields = Object.values(watch()).filter((v) => v).length;
+    const productFilled = products.some((p) => p.quantity > 0) ? 1 : 0;
+    return Math.min(((filledFields + productFilled) / (totalFields + 1)) * 100, 100);
+  };
 
   return (
     <Layout>
@@ -228,291 +268,424 @@ export default function Checkout({ cartItems }) {
         <h1 className="text-3xl sm:text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-purple-600 dark:from-indigo-400 dark:to-purple-400 tracking-tight mb-8">
           Complete Your Order
         </h1>
-        <Progress value={progress} className="mb-8 h-3 rounded-full bg-indigo-200 dark:bg-gray-700 shadow-md" />
+        <Progress value={calculateProgress()} className="mb-8 h-3 rounded-full bg-indigo-200 dark:bg-gray-700 shadow-md" />
 
-        {/* Product Details */}
         {products.length === 0 ? (
           <div className="text-center text-gray-500 dark:text-gray-400 text-lg py-6 animate-pulse">
-            No items in cart. <a href="/AllProduct" className="text-indigo-600 dark:text-indigo-400 hover:underline">Add some products!</a>
+            No items in cart.{" "}
+            <a href="/AllProduct" className="text-indigo-600 dark:text-indigo-400 hover:underline">
+              Add some products!
+            </a>
           </div>
         ) : (
-          products.map((product, index) => (
-            <Card
-              key={index}
-              className="mb-6 shadow-lg hover:shadow-xl transition-all duration-300 rounded-xl overflow-hidden bg-white dark:bg-gray-800 border border-indigo-200 dark:border-gray-700"
-            >
-              <CardHeader className="bg-gradient-to-r from-indigo-100 to-purple-100 dark:from-indigo-900 dark:to-purple-900 text-gray-800 dark:text-gray-100 font-semibold p-4">
-                Order Summary
-              </CardHeader>
-              <CardContent className="space-y-4 p-4 bg-gradient-to-r from-gray-50 to-white dark:from-gray-900 dark:to-gray-800">
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                  <div className="flex-1">
-                    <h3 className="font-semibold text-xl text-gray-800 dark:text-gray-100 tracking-tight">{product.product.productName}</h3>
-                    <Input
-                      type="number"
-                      value={product.quantity}
-                      {...register(`products[${index}].quantity`, {
-                        valueAsNumber: true,
-                        min: { value: 1, message: "Quantity must be at least 1" },
-                        required: "Quantity is required",
-                      })}
-                      onChange={(e) => handleProductChange(index, "quantity", parseInt(e.target.value) || 1)}
-                      className="w-24 text-center mt-2 rounded-lg shadow-md border-indigo-300 dark:border-gray-600 focus:ring-2 focus:ring-indigo-500 transition-all duration-300 bg-indigo-50 dark:bg-gray-700"
-                    />
-                    {error && <p className="text-red-500 dark:text-red-400 text-sm mt-1 animate-pulse">{error}</p>}
-                    {errors.products?.[index]?.quantity && (
-                      <p className="text-red-500 dark:text-red-400 text-sm mt-1">{errors.products[index].quantity.message}</p>
-                    )}
-                    {availabilityStatus[product.product.id] && (
-                      <p
-                        className={`text-sm mt-1 ${
-                          availabilityStatus[product.product.id].available
-                            ? "text-green-600 dark:text-green-400"
-                            : "text-red-600 dark:text-red-400 animate-pulse"
-                        }`}
-                      >
-                        {availabilityStatus[product.product.id].message}
-                      </p>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="font-semibold text-gray-700 dark:text-gray-300">Price:</span>
-                    <span className="text-xl font-bold text-indigo-600 dark:text-indigo-300 flex items-center">
-                      <IndianRupee size={20} /> {parseFloat(product.product.price).toFixed(2)}
-                    </span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))
-        )}
-
-        {products.length > 0 && (
-          <>
-            {/* Booking and Payment Details */}
-            <Card className="mb-6 shadow-lg border border-indigo-200 dark:border-gray-700">
-              <CardHeader className="bg-gradient-to-r from-indigo-100 to-purple-100 dark:from-indigo-900 dark:to-purple-900 text-gray-800 dark:text-gray-100 font-semibold p-4">
-                Payment Details
-              </CardHeader>
-              <CardContent className="p-6 space-y-6 bg-gradient-to-r from-gray-50 to-white dark:from-gray-900 dark:to-gray-800">
-                <div className="flex flex-col sm:flex-row justify-between gap-4">
-                  <span className="font-semibold text-gray-700 dark:text-gray-300">Booking Amount:</span>
-                  <div className="flex flex-col w-full sm:w-32">
-                    <Input
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      placeholder="Enter Amount"
-                      {...register("booking_amount", {
-                        valueAsNumber: true,
-                        required: "Booking amount is required",
-                        min: { value: 0.01, message: "Booking amount must be greater than 0" },
-                      })}
-                      className="text-center rounded-lg shadow-md border-indigo-300 dark:border-gray-600 focus:ring-2 focus:ring-indigo-500 transition-all duration-300 bg-indigo-50 dark:bg-gray-700"
-                    />
-                    {errors.booking_amount && (
-                      <p className="text-red-500 dark:text-red-400 text-sm mt-1">{errors.booking_amount.message}</p>
-                    )}
-                  </div>
-                </div>
-                <div className="flex flex-col sm:flex-row justify-between gap-4">
-                  <span className="font-semibold text-gray-700 dark:text-gray-300">Paid Amount:</span>
-                  <div className="flex flex-col w-full sm:w-32">
-                    <Input
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      placeholder="Enter Amount"
-                      {...register("paid_amount", {
-                        valueAsNumber: true,
-                        required: false,
-                        validate: (value) => {
-                          if (value < 0) return "Paid amount cannot be negative";
-                          if (value > bookingAmount) return "Paid amount cannot exceed booking amount";
-                          return true;
-                        },
-                      })}
-                      className="text-center rounded-lg shadow-md border-indigo-300 dark:border-gray-600 focus:ring-2 focus:ring-indigo-500 transition-all duration-300 bg-indigo-50 dark:bg-gray-700"
-                    />
-                    {errors.paid_amount && (
-                      <p className="text-red-500 dark:text-red-400 text-sm mt-1">{errors.paid_amount.message}</p>
-                    )}
-                  </div>
-                </div>
-                <div className="flex justify-between">
-                  <span className="font-semibold text-gray-700 dark:text-gray-300">Remaining Amount:</span>
-                  <span className="flex items-center text-indigo-600 dark:text-indigo-300 font-bold text-xl">
-                    <IndianRupee size={20} /> {remainingAmount.toFixed(2)}
-                  </span>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* User Information */}
-            <Card className="mb-6 shadow-lg border border-indigo-200 dark:border-gray-700">
-              <CardHeader className="bg-gradient-to-r from-indigo-100 to-purple-100 dark:from-indigo-900 dark:to-purple-900 text-gray-800 dark:text-gray-100 font-semibold p-4">
-                Client Details
-              </CardHeader>
-              <CardContent className="p-6 space-y-6 bg-gradient-to-r from-gray-50 to-white dark:from-gray-900 dark:to-gray-800">
-                <Input
-                  {...register("name", { required: "Name is required" })}
-                  placeholder="Full Name"
-                  defaultValue={userData.name}
-                  className="border-indigo-300 dark:border-gray-600 rounded-lg shadow-md focus:ring-2 focus:ring-indigo-500 transition-all duration-300 bg-indigo-50 dark:bg-gray-700"
-                />
-                {errors.name && <p className="text-red-500 dark:text-red-400 text-sm">{errors.name.message}</p>}
-                <Input
-                  {...register("email", {
-                    required: "Email is required",
-                    pattern: {
-                      value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
-                      message: "Invalid email address",
-                    },
-                  })}
-                  placeholder="Email Address"
-                  defaultValue={userData.email}
-                  className="border-indigo-300 dark:border-gray-600 rounded-lg shadow-md focus:ring-2 focus:ring-indigo-500 transition-all duration-300 bg-indigo-50 dark:bg-gray-700"
-                />
-                {errors.email && <p className="text-red-500 dark:text-red-400 text-sm">{errors.email.message}</p>}
-                <Input
-                  {...register("phone", {
-                    required: "Phone number is required",
-                    pattern: {
-                      value: /^\d{10}$/,
-                      message: "Phone number must be 10 digits",
-                    },
-                  })}
-                  placeholder="Phone Number"
-                  defaultValue={userData.phone}
-                  className="border-indigo-300 dark:border-gray-600 rounded-lg shadow-md focus:ring-2 focus:ring-indigo-500 transition-all duration-300 bg-indigo-50 dark:bg-gray-700"
-                />
-                {errors.phone && <p className="text-red-500 dark:text-red-400 text-sm">{errors.phone.message}</p>}
-              </CardContent>
-            </Card>
-
-            {/* Shipping Address */}
-            <Card className="mb-6 shadow-lg border border-indigo-200 dark:border-gray-700">
-              <CardHeader className="bg-gradient-to-r from-indigo-100 to-purple-100 dark:from-indigo-900 dark:to-purple-900 text-gray-800 dark:text-gray-100 font-semibold p-4">
-                Shipping Address
-              </CardHeader>
-              <CardContent className="p-6 space-y-6 bg-gradient-to-r from-gray-50 to-white dark:from-gray-900 dark:to-gray-800">
-                <Input
-                  {...register("address", { required: "Address is required" })}
-                  placeholder="Street Address"
-                  defaultValue={userData.address}
-                  className="border-indigo-300 dark:border-gray-600 rounded-lg shadow-md focus:ring-2 focus:ring-indigo-500 transition-all duration-300 bg-indigo-50 dark:bg-gray-700"
-                />
-                {errors.address && <p className="text-red-500 dark:text-red-400 text-sm">{errors.address.message}</p>}
-                <Input
-                  {...register("city", { required: "City is required" })}
-                  placeholder="City"
-                  defaultValue={userData.city}
-                  className="border-indigo-300 dark:border-gray-600 rounded-lg shadow-md focus:ring-2 focus:ring-indigo-500 transition-all duration-300 bg-indigo-50 dark:bg-gray-700"
-                />
-                {errors.city && <p className="text-red-500 dark:text-red-400 text-sm">{errors.city.message}</p>}
-                <Input
-                  {...register("zip", {
-                    required: "ZIP Code is required",
-                    pattern: {
-                      value: /^\d{6}$/,
-                      message: "ZIP Code must be 6 digits",
-                    },
-                  })}
-                  placeholder="ZIP Code"
-                  defaultValue={userData.zip}
-                  className="border-indigo-300 dark:border-gray-600 rounded-lg shadow-md focus:ring-2 focus:ring-indigo-500 transition-all duration-300 bg-indigo-50 dark:bg-gray-700"
-                />
-                {errors.zip && <p className="text-red-500 dark:text-red-400 text-sm">{errors.zip.message}</p>}
-              </CardContent>
-            </Card>
-
-            {/* Delivered Date (Calendar) */}
-            <Card className="mb-6 shadow-lg border border-indigo-200 dark:border-gray-700">
-              <CardHeader className="bg-gradient-to-r from-indigo-100 to-purple-100 dark:from-indigo-900 dark:to-purple-900 text-gray-800 dark:text-gray-100 font-semibold p-4">
-                Delivery Date
-              </CardHeader>
-              <CardContent className="p-6 flex flex-col items-center bg-gradient-to-r from-gray-50 to-white dark:from-gray-900 dark:to-gray-800">
-                <Calendar
-                  onChange={handleDateChange}
-                  value={deliveryDate}
-                  className="border-indigo-300 dark:border-gray-600 p-4 rounded-lg w-full max-w-md bg-white dark:bg-gray-800 shadow-lg transition-all duration-300"
-                  minDate={new Date()}
-                />
-                <p className="text-sm text-gray-500 dark:text-gray-400 mt-2 italic">Select a date for delivery.</p>
-              </CardContent>
-            </Card>
-
-            {/* Data Preview */}
-            <Card className="mb-6 shadow-lg border border-indigo-200 dark:border-gray-700">
-              <CardHeader className="bg-gradient-to-r from-indigo-100 to-purple-100 dark:from-indigo-900 dark:to-purple-900 text-gray-800 dark:text-gray-100 font-semibold p-4">
-                Order Preview
-              </CardHeader>
-              <CardContent className="p-6 space-y-4 bg-gradient-to-r from-gray-50 to-white dark:from-gray-900 dark:to-gray-800">
-                <div className="flex justify-between">
-                  <span className="font-semibold text-gray-700 dark:text-gray-300">Name:</span>
-                  <span className="text-gray-800 dark:text-gray-100">{watch("name") || userData.name || "N/A"}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="font-semibold text-gray-700 dark:text-gray-300">Email:</span>
-                  <span className="text-gray-800 dark:text-gray-100">{watch("email") || userData.email || "N/A"}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="font-semibold text-gray-700 dark:text-gray-300">Phone:</span>
-                  <span className="text-gray-800 dark:text-gray-100">{watch("phone") || userData.phone || "N/A"}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="font-semibold text-gray-700 dark:text-gray-300">Address:</span>
-                  <span className="text-gray-800 dark:text-gray-100">{watch("address") || userData.address || "N/A"}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="font-semibold text-gray-700 dark:text-gray-300">City:</span>
-                  <span className="text-gray-800 dark:text-gray-100">{watch("city") || userData.city || "N/A"}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="font-semibold text-gray-700 dark:text-gray-300">ZIP Code:</span>
-                  <span className="text-gray-800 dark:text-gray-100">{watch("zip") || userData.zip || "N/A"}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="font-semibold text-gray-700 dark:text-gray-300">Delivery Date:</span>
-                  <span className="text-gray-800 dark:text-gray-100">{deliveryDate.toLocaleDateString()}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="font-semibold text-gray-700 dark:text-gray-300">Booking Amount:</span>
-                  <span className="flex items-center text-indigo-600 dark:text-indigo-300 font-bold">
-                    <IndianRupee size={20} /> {bookingAmount.toFixed(2)}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="font-semibold text-gray-700 dark:text-gray-300">Paid Amount:</span>
-                  <span className="flex items-center text-indigo-600 dark:text-indigo-300 font-bold">
-                    <IndianRupee size={20} /> {paidAmount.toFixed(2)}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="font-semibold text-gray-700 dark:text-gray-300">Remaining Amount:</span>
-                  <span className="flex items-center text-indigo-600 dark:text-indigo-300 font-bold">
-                    <IndianRupee size={20} /> {remainingAmount.toFixed(2)}
-                  </span>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Submit Button */}
-            <div className="text-center">
-              <Button
-                onClick={handleSubmit(onSubmit)}
-                className="w-full sm:w-1/2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white py-4 rounded-lg shadow-lg transition-all duration-300 transform hover:scale-105"
-                disabled={
-                  isSubmitting ||
-                  products.length === 0 ||
-                  Object.values(availabilityStatus).some((status) => !status.available)
-                }
+          <form onSubmit={handleSubmit(onSubmit)}>
+            {products.map((product, index) => (
+              <Card
+                key={product.product.id || index}
+                className="mb-6 shadow-lg hover:shadow-xl transition-all duration-300 rounded-xl overflow-hidden bg-white dark:bg-gray-800 border border-indigo-200 dark:border-gray-700"
               >
-                <ShoppingCart className="h-5 w-5 mr-2" />
-                {isSubmitting ? "Placing Order..." : "Place Order"}
-              </Button>
-            </div>
-          </>
+                <CardHeader className="bg-gradient-to-r from-indigo-100 to-purple-100 dark:from-indigo-900 dark:to-purple-900 text-gray-800 dark:text-gray-100 font-semibold p-4">
+                  Order Summary
+                </CardHeader>
+                <CardContent className="space-y-4 p-4 bg-gradient-to-r from-gray-50 to-white dark:from-gray-900 dark:to-gray-800">
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                    <div className="flex-1">
+                      <h3 className="font-semibold text-xl text-gray-800 dark:text-gray-100 tracking-tight">
+                        {product.product.productName}
+                      </h3>
+                      <Input
+                        type="number"
+                        min="1"
+                        value={product.quantity}
+                        {...register(`products[${index}].quantity`, {
+                          valueAsNumber: true,
+                          min: { value: 1, message: "Quantity must be at least 1" },
+                          required: "Quantity is required",
+                        })}
+                        onChange={(e) => handleProductChange(index, e.target.value)}
+                        className="w-24 text-center mt-2 rounded-lg shadow-md border-indigo-300 dark:border-gray-600 focus:ring-2 focus:ring-indigo-500 transition-all duration-300 bg-indigo-50 dark:bg-gray-700"
+                      />
+                      {error && <p className="text-red-500 dark:text-red-400 text-sm mt-1 animate-pulse">{error}</p>}
+                      {errors.products?.[index]?.quantity && (
+                        <p className="text-red-500 dark:text-red-400 text-sm mt-1">
+                          {errors.products[index].quantity.message}
+                        </p>
+                      )}
+                      {availabilityStatus[product.product.id] && (
+                        <p
+                          className={`text-sm mt-1 ${
+                            availabilityStatus[product.product.id].available
+                              ? "text-green-600 dark:text-green-400"
+                              : "text-red-600 dark:text-red-400 animate-pulse"
+                          }`}
+                        >
+                          {availabilityStatus[product.product.id].message}
+                        </p>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold text-gray-700 dark:text-gray-300">Price:</span>
+                      <span className="text-xl font-bold text-indigo-600 dark:text-indigo-300 flex items-center">
+                        <IndianRupee size={20} /> {(parseFloat(product.product.price) * product.quantity).toFixed(2)}
+                      </span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+
+            {products.length > 0 && (
+              <>
+                <Card className="mb-6 shadow-lg border border-indigo-200 dark:border-gray-700">
+                  <CardHeader className="bg-gradient-to-r from-indigo-100 to-purple-100 dark:from-indigo-900 dark:to-purple-900 text-gray-800 dark:text-gray-100 font-semibold p-4">
+                    Billing Information
+                  </CardHeader>
+                  <CardContent className="p-6 space-y-6 bg-gradient-to-r from-gray-50 to-white dark:from-gray-900 dark:to-gray-800">
+                    <Input
+                      {...register("billingNumber", {
+                        required: "Billing Number is required",
+                        maxLength: { value: 50, message: "Billing Number must not exceed 50 characters" },
+                      })}
+                      placeholder="Billing Number"
+                      className="border-indigo-300 dark:border-gray-600 rounded-lg shadow-md focus:ring-2 focus:ring-indigo-500 transition-all duration-300 bg-indigo-50 dark:bg-gray-700"
+                    />
+                    {errors.billingNumber && (
+                      <p className="text-red-500 dark:text-red-400 text-sm">{errors.billingNumber.message}</p>
+                    )}
+                  </CardContent>
+                </Card>
+
+                <Card className="mb-6 shadow-lg border border-indigo-200 dark:border-gray-700">
+                  <CardHeader className="bg-gradient-to-r from-indigo-100 to-purple-100 dark:from-indigo-900 dark:to-purple-900 text-gray-800 dark:text-gray-100 font-semibold p-4">
+                    Payment Details
+                  </CardHeader>
+                  <CardContent className="p-6 space-y-6 bg-gradient-to-r from-gray-50 to-white dark:from-gray-900 dark:to-gray-800">
+                    <div className="flex flex-col sm:flex-row justify-between gap-4">
+                      <span className="font-semibold text-gray-700 dark:text-gray-300">Booking Amount:</span>
+                      <div className="flex flex-col w-full sm:w-32">
+                        <Input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          {...register("bookingAmount", {
+                            valueAsNumber: true,
+                            required: "Booking amount is required",
+                            min: { value: 0.01, message: "Booking amount must be greater than 0" },
+                          })}
+                          placeholder="Enter Amount"
+                          className="text-center rounded-lg shadow-md border-indigo-300 dark:border-gray-600 focus:ring-2 focus:ring-indigo-500 transition-all duration-300 bg-indigo-50 dark:bg-gray-700"
+                        />
+                        {errors.bookingAmount && (
+                          <p className="text-red-500 dark:text-red-400 text-sm mt-1">{errors.bookingAmount.message}</p>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex flex-col sm:flex-row justify-between gap-4">
+                      <span className="font-semibold text-gray-700 dark:text-gray-300">Paid Amount:</span>
+                      <div className="flex flex-col w-full sm:w-32">
+                        <Input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          {...register("paidAmount", {
+                            valueAsNumber: true,
+                            required: "Paid amount is required",
+                            validate: (value) =>
+                              value <= bookingAmount || "Paid amount cannot exceed booking amount",
+                          })}
+                          placeholder="Enter Amount"
+                          className="text-center rounded-lg shadow-md border-indigo-300 dark:border-gray-600 focus:ring-2 focus:ring-indigo-500 transition-all duration-300 bg-indigo-50 dark:bg-gray-700"
+                        />
+                        {errors.paidAmount && (
+                          <p className="text-red-500 dark:text-red-400 text-sm mt-1">{errors.paidAmount.message}</p>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="font-semibold text-gray-700 dark:text-gray-300">Remaining Amount:</span>
+                      <span className="flex items-center text-indigo-600 dark:text-indigo-300 font-bold text-xl">
+                        <IndianRupee size={20} /> {remainingAmount.toFixed(2)}
+                      </span>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="mb-6 shadow-lg border border-indigo-200 dark:border-gray-700">
+                  <CardHeader className="bg-gradient-to-r from-indigo-100 to-purple-100 dark:from-indigo-900 dark:to-purple-900 text-gray-800 dark:text-gray-100 font-semibold p-4">
+                    Client Details
+                  </CardHeader>
+                  <CardContent className="p-6 space-y-6 bg-gradient-to-r from-gray-50 to-white dark:from-gray-900 dark:to-gray-800">
+                    <Input
+                      {...register("name", {
+                        required: "Name is required",
+                        maxLength: { value: 255, message: "Name must not exceed 255 characters" },
+                      })}
+                      placeholder="Full Name"
+                      className="border-indigo-300 dark:border-gray-600 rounded-lg shadow-md focus:ring-2 focus:ring-indigo-500 transition-all duration-300 bg-indigo-50 dark:bg-gray-700"
+                    />
+                    {errors.name && <p className="text-red-500 dark:text-red-400 text-sm">{errors.name.message}</p>}
+                    <Input
+                      {...register("email", {
+                        required: "Email is required",
+                        pattern: {
+                          value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
+                          message: "Invalid email address",
+                        },
+                        maxLength: { value: 255, message: "Email must not exceed 255 characters" },
+                      })}
+                      placeholder="Email Address"
+                      className="border-indigo-300 dark:border-gray-600 rounded-lg shadow-md focus:ring-2 focus:ring-indigo-500 transition-all duration-300 bg-indigo-50 dark:bg-gray-700"
+                    />
+                    {errors.email && <p className="text-red-500 dark:text-red-400 text-sm">{errors.email.message}</p>}
+                    <Input
+                      {...register("phone", {
+                        required: "Phone number is required",
+                        pattern: { value: /^\d{10}$/, message: "Phone number must be 10 digits" },
+                      })}
+                      placeholder="Phone Number"
+                      maxLength={10}
+                      className="border-indigo-300 dark:border-gray-600 rounded-lg shadow-md focus:ring-2 focus:ring-indigo-500 transition-all duration-300 bg-indigo-50 dark:bg-gray-700"
+                    />
+                    {errors.phone && <p className="text-red-500 dark:text-red-400 text-sm">{errors.phone.message}</p>}
+                  </CardContent>
+                </Card>
+
+                <Card className="mb-6 shadow-lg border border-indigo-200 dark:border-gray-700">
+                  <CardHeader className="bg-gradient-to-r from-indigo-100 to-purple-100 dark:from-indigo-900 dark:to-purple-900 text-gray-800 dark:text-gray-100 font-semibold p-4">
+                    Address Details
+                  </CardHeader>
+                  <CardContent className="p-6 space-y-6 bg-gradient-to-r from-gray-50 to-white dark:from-gray-900 dark:to-gray-800">
+                    <Input
+                      {...register("userAddress", {
+                        required: "User Address is required",
+                        maxLength: { value: 500, message: "Address must not exceed 500 characters" },
+                      })}
+                      placeholder="User Street Address"
+                      className="border-indigo-300 dark:border-gray-600 rounded-lg shadow-md focus:ring-2 focus:ring-indigo-500 transition-all duration-300 bg-indigo-50 dark:bg-gray-700"
+                    />
+                    {errors.userAddress && (
+                      <p className="text-red-500 dark:text-red-400 text-sm">{errors.userAddress.message}</p>
+                    )}
+                    <Input
+                      {...register("shippingAddress", {
+                        required: "Shipping Address is required",
+                        maxLength: { value: 500, message: "Address must not exceed 500 characters" },
+                      })}
+                      placeholder="Shipping Street Address"
+                      className="border-indigo-300 dark:border-gray-600 rounded-lg shadow-md focus:ring-2 focus:ring-indigo-500 transition-all duration-300 bg-indigo-50 dark:bg-gray-700"
+                    />
+                    {errors.shippingAddress && (
+                      <p className="text-red-500 dark:text-red-400 text-sm">{errors.shippingAddress.message}</p>
+                    )}
+                    <Input
+                      {...register("city", {
+                        required: "City is required",
+                        maxLength: { value: 100, message: "City must not exceed 100 characters" },
+                      })}
+                      placeholder="City"
+                      className="border-indigo-300 dark:border-gray-600 rounded-lg shadow-md focus:ring-2 focus:ring-indigo-500 transition-all duration-300 bg-indigo-50 dark:bg-gray-700"
+                    />
+                    {errors.city && <p className="text-red-500 dark:text-red-400 text-sm">{errors.city.message}</p>}
+                    <Input
+                      {...register("zip", {
+                        required: "ZIP Code is required",
+                        pattern: { value: /^\d{6}$/, message: "ZIP Code must be 6 digits" },
+                      })}
+                      placeholder="ZIP Code"
+                      maxLength={6}
+                      className="border-indigo-300 dark:border-gray-600 rounded-lg shadow-md focus:ring-2 focus:ring-indigo-500 transition-all duration-300 bg-indigo-50 dark:bg-gray-700"
+                    />
+                    {errors.zip && <p className="text-red-500 dark:text-red-400 text-sm">{errors.zip.message}</p>}
+                  </CardContent>
+                </Card>
+
+                <Card className="mb-6 shadow-lg border border-indigo-200 dark:border-gray-700">
+                  <CardHeader className="bg-gradient-to-r from-indigo-100 to-purple-100 dark:from-indigo-900 dark:to-purple-900 text-gray-800 dark:text-gray-100 font-semibold p-4">
+                    Delivery Schedule
+                  </CardHeader>
+                  <CardContent className="p-6 flex flex-col items-center  dark:from-gray-900 dark:to-gray-800">
+                    <Calendar
+                      mode="single"
+                      selected={new Date(watch("deliveryDate"))}
+                      onSelect={(date) => {
+                        if (date) {
+                          setValue("deliveryDate", date.toISOString().split("T")[0]);
+                          checkAvailability();
+                        }
+                      }}
+                      disabled={(date) => date < new Date().setHours(0, 0, 0, 0)}
+                      className="rounded-md border border-indigo-300 dark:border-gray-600 shadow-md bg-white dark:bg-gray-800  max-w-md"
+                    />
+                    <div className="mt-4 w-full max-w-md flex gap-2">
+                      <Input
+                        type="time"
+                        {...register("deliveryTime", { required: "Delivery time is required" })}
+                        onChange={(e) => {
+                          setValue("deliveryTime", e.target.value);
+                          checkAvailability();
+                        }}
+                        className="flex-1 p-2 border border-indigo-300 dark:border-gray-600 rounded-lg bg-indigo-50 dark:bg-gray-700 focus:ring-2 focus:ring-indigo-500 transition-all duration-300"
+                      />
+                      <select
+                        {...register("deliveryTimePeriod", { required: "Time period is required" })}
+                        onChange={(e) => {
+                          setValue("deliveryTimePeriod", e.target.value);
+                          checkAvailability();
+                        }}
+                        className="p-2 border border-indigo-300 dark:border-gray-600 rounded-lg bg-indigo-50 dark:bg-gray-700 focus:ring-2 focus:ring-indigo-500 transition-all duration-300"
+                      >
+                        <option value="AM">AM</option>
+                        <option value="PM">PM</option>
+                      </select>
+                    </div>
+                    {errors.deliveryTime && (
+                      <p className="text-red-500 dark:text-red-400 text-sm mt-2">{errors.deliveryTime.message}</p>
+                    )}
+                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-2 italic">
+                      Select a date and exact time for delivery.
+                    </p>
+                  </CardContent>
+                </Card>
+
+                <Card className="mb-6 shadow-lg border border-indigo-200 dark:border-gray-700">
+                  <CardHeader className="bg-gradient-to-r from-indigo-100 to-purple-100 dark:from-indigo-900 dark:to-purple-900 text-gray-800 dark:text-gray-100 font-semibold p-4">
+                    Pickup Schedule
+                  </CardHeader>
+                  <CardContent className="p-6 flex flex-col items-center bg-gradient-to-r from-gray-50 to-white dark:from-gray-900 dark:to-gray-800">
+                    <Calendar
+                      mode="single"
+                      selected={new Date(watch("pickupDate"))}
+                      onSelect={(date) => {
+                        if (date) {
+                          setValue("pickupDate", date.toISOString().split("T")[0]);
+                          checkAvailability();
+                        }
+                      }}
+                      disabled={(date) => date < new Date(watch("deliveryDate"))}
+                      className="rounded-md border border-indigo-300 dark:border-gray-600 shadow-md bg-white dark:bg-gray-800  max-w-md"
+                    />
+                    <div className="mt-4 w-full max-w-md flex gap-2">
+                      <Input
+                        type="time"
+                        {...register("pickupTime", { required: "Pickup time is required" })}
+                        onChange={(e) => {
+                          setValue("pickupTime", e.target.value);
+                          checkAvailability();
+                        }}
+                        className="flex-1 p-2 border border-indigo-300 dark:border-gray-600 rounded-lg bg-indigo-50 dark:bg-gray-700 focus:ring-2 focus:ring-indigo-500 transition-all duration-300"
+                      />
+                      <select
+                        {...register("pickupTimePeriod", { required: "Time period is required" })}
+                        onChange={(e) => {
+                          setValue("pickupTimePeriod", e.target.value);
+                          checkAvailability();
+                        }}
+                        className="p-2 border border-indigo-300 dark:border-gray-600 rounded-lg bg-indigo-50 dark:bg-gray-700 focus:ring-2 focus:ring-indigo-500 transition-all duration-300"
+                      >
+                        <option value="AM">AM</option>
+                        <option value="PM">PM</option>
+                      </select>
+                    </div>
+                    {errors.pickupTime && (
+                      <p className="text-red-500 dark:text-red-400 text-sm mt-2">{errors.pickupTime.message}</p>
+                    )}
+                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-2 italic">
+                      Select a date and exact time for pickup.
+                    </p>
+                  </CardContent>
+                </Card>
+
+                <Card className="mb-6 shadow-lg border border-indigo-200 dark:border-gray-700">
+                  <CardHeader className="bg-gradient-to-r from-indigo-100 to-purple-100 dark:from-indigo-900 dark:to-purple-900 text-gray-800 dark:text-gray-100 font-semibold p-4">
+                    Order Preview
+                  </CardHeader>
+                  <CardContent className="p-6 space-y-4 bg-gradient-to-r from-gray-50 to-white dark:from-gray-900 dark:to-gray-800">
+                    <div className="flex justify-between">
+                      <span className="font-semibold text-gray-700 dark:text-gray-300">Name:</span>
+                      <span className="text-gray-800 dark:text-gray-100">{watch("name") || "N/A"}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="font-semibold text-gray-700 dark:text-gray-300">Email:</span>
+                      <span className="text-gray-800 dark:text-gray-100">{watch("email") || "N/A"}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="font-semibold text-gray-700 dark:text-gray-300">Phone:</span>
+                      <span className="text-gray-800 dark:text-gray-100">{watch("phone") || "N/A"}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="font-semibold text-gray-700 dark:text-gray-300">Billing Number:</span>
+                      <span className="text-gray-800 dark:text-gray-100">{watch("billingNumber") || "N/A"}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="font-semibold text-gray-700 dark:text-gray-300">User Address:</span>
+                      <span className="text-gray-800 dark:text-gray-100">{watch("userAddress") || "N/A"}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="font-semibold text-gray-700 dark:text-gray-300">Shipping Address:</span>
+                      <span className="text-gray-800 dark:text-gray-100">{watch("shippingAddress") || "N/A"}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="font-semibold text-gray-700 dark:text-gray-300">City:</span>
+                      <span className="text-gray-800 dark:text-gray-100">{watch("city") || "N/A"}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="font-semibold text-gray-700 dark:text-gray-300">ZIP Code:</span>
+                      <span className="text-gray-800 dark:text-gray-100">{watch("zip") || "N/A"}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="font-semibold text-gray-700 dark:text-gray-300">Delivery Schedule:</span>
+                      <span className="text-gray-800 dark:text-gray-100">
+                        {watch("deliveryTime")
+                          ? formatDateTimeForDisplay(watch("deliveryDate"), watch("deliveryTime"), watch("deliveryTimePeriod"))
+                          : new Date(watch("deliveryDate")).toLocaleDateString("en-US", { weekday: "short", month: "long", day: "2-digit", year: "numeric" }).replace(/(\d+)/g, "$1").replace(",", "")}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="font-semibold text-gray-700 dark:text-gray-300">Pickup Schedule:</span>
+                      <span className="text-gray-800 dark:text-gray-100">
+                        {watch("pickupTime")
+                          ? formatDateTimeForDisplay(watch("pickupDate"), watch("pickupTime"), watch("pickupTimePeriod"))
+                          : new Date(watch("pickupDate")).toLocaleDateString("en-US", { weekday: "short", month: "long", day: "2-digit", year: "numeric" }).replace(/(\d+)/g, "$1").replace(",", "")}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="font-semibold text-gray-700 dark:text-gray-300">Booking Amount:</span>
+                      <span className="flex items-center text-indigo-600 dark:text-indigo-300 font-bold">
+                        <IndianRupee size={20} /> {bookingAmount.toFixed(2)}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="font-semibold text-gray-700 dark:text-gray-300">Paid Amount:</span>
+                      <span className="flex items-center text-indigo-600 dark:text-indigo-300 font-bold">
+                        <IndianRupee size={20} /> {paidAmount.toFixed(2)}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="font-semibold text-gray-700 dark:text-gray-300">Remaining Amount:</span>
+                      <span className="flex items-center text-indigo-600 dark:text-indigo-300 font-bold">
+                        <IndianRupee size={20} /> {remainingAmount.toFixed(2)}
+                      </span>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <div className="text-center">
+                  <Button
+                    type="submit"
+                    className="w-full sm:w-1/2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white py-4 rounded-lg shadow-md transition-all duration-300 transform hover:scale-105"
+                    disabled={
+                      isSubmitting ||
+                      products.length === 0 ||
+                      Object.values(availabilityStatus).some((status) => !status?.available)
+                    }
+                  >
+                    <ShoppingCart className="h-5 w-5 mr-2" />
+                    {isSubmitting ? "Placing Order..." : "Place Order"}
+                  </Button>
+                </div>
+              </>
+            )}
+          </form>
         )}
       </div>
     </Layout>
