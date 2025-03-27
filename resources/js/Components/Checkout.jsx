@@ -4,7 +4,7 @@ import { Progress } from "@/components/ui/progress";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { Calendar } from "@/components/ui/calendar"; // Import shadcn/ui Calendar
+import { Calendar } from "@/components/ui/calendar";
 import { IndianRupee, ShoppingCart } from "lucide-react";
 import axios from "axios";
 import Swal from "sweetalert2";
@@ -20,7 +20,7 @@ export default function Checkout({ cartItems = [] }) {
     watch,
     formState: { errors },
     reset,
-    trigger
+    trigger,
   } = useForm({
     defaultValues: {
       name: "",
@@ -33,9 +33,9 @@ export default function Checkout({ cartItems = [] }) {
       billingNumber: "",
       bookingAmount: "",
       paidAmount: "",
-      products: cartItems.map((item) => ({ 
+      products: cartItems.map((item) => ({
         quantity: item.quantity || 1,
-        product_id: item.product?.id
+        product_id: item.product?.id,
       })),
       deliveryDate: new Date().toISOString().split("T")[0],
       deliveryTime: "12:00",
@@ -51,9 +51,10 @@ export default function Checkout({ cartItems = [] }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [availabilityStatus, setAvailabilityStatus] = useState({});
 
-  const API_URL = import.meta.env.VITE_ENVIRONMENT === "production"
-    ? `${import.meta.env.VITE_API_BASE_URL}/api`
-    : "/api";
+  const API_URL =
+    import.meta.env.VITE_ENVIRONMENT === "production"
+      ? `${import.meta.env.VITE_API_BASE_URL}/api`
+      : "/api";
 
   useEffect(() => {
     const userInfo = JSON.parse(localStorage.getItem("userInfo") || "{}");
@@ -69,9 +70,8 @@ export default function Checkout({ cartItems = [] }) {
     }
   }, [setValue]);
 
-  // Convert to MySQL timestamp format (YYYY-MM-DD HH:MM:SS) with correct AM/PM handling
   const toMySQLTimestamp = (date, time, period) => {
-    const [hours, minutes] = time.split(':');
+    const [hours, minutes] = time.split(":");
     let hour = parseInt(hours);
     const minute = parseInt(minutes);
 
@@ -84,10 +84,11 @@ export default function Checkout({ cartItems = [] }) {
     const dateObj = new Date(date);
     dateObj.setHours(hour, minute, 0, 0);
 
-    return `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}-${String(dateObj.getDate()).padStart(2, '0')} ${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}:00`;
+    return `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, "0")}-${String(
+      dateObj.getDate()
+    ).padStart(2, "0")} ${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}:00`;
   };
 
-  // Format for display purposes only
   const formatDateTimeForDisplay = (date, time, period) => {
     return new Date(date)
       .toLocaleDateString("en-US", {
@@ -141,7 +142,7 @@ export default function Checkout({ cartItems = [] }) {
     const qty = Math.max(1, parseInt(value) || 1);
     const updatedProducts = [...products];
     const product = updatedProducts[index];
-    
+
     if (qty > (product.product.stock_quantity || Infinity)) {
       setError(`Only ${product.product.stock_quantity} available`);
       return;
@@ -160,6 +161,18 @@ export default function Checkout({ cartItems = [] }) {
   const remainingAmount = Math.max(bookingAmount - paidAmount, 0);
 
   const onSubmit = async (data) => {
+    const deliveryDate = new Date(data.deliveryDate);
+    const pickupDate = new Date(data.pickupDate);
+
+    if (deliveryDate > pickupDate) {
+      Swal.fire({
+        icon: "warning",
+        title: "Invalid Dates",
+        text: "Delivery date must be on or before pickup date",
+      });
+      return;
+    }
+
     if (Object.values(availabilityStatus).some((status) => !status?.available)) {
       Swal.fire({
         icon: "warning",
@@ -239,9 +252,10 @@ export default function Checkout({ cartItems = [] }) {
       setProducts([]);
       setError("");
       setAvailabilityStatus({});
-      const endpoint = import.meta.env.VITE_ENVIRONMENT === "production"
-        ? "https://event.nikatby.in/user/public/AllProduct"
-        : "/AllProduct";
+      const endpoint =
+        import.meta.env.VITE_ENVIRONMENT === "production"
+          ? "https://event.nikatby.in/user/public/AllProduct"
+          : "/AllProduct";
       Inertia.visit(endpoint);
     } catch (err) {
       console.error("Order placement error:", err);
@@ -260,6 +274,20 @@ export default function Checkout({ cartItems = [] }) {
     const filledFields = Object.values(watch()).filter((v) => v).length;
     const productFilled = products.some((p) => p.quantity > 0) ? 1 : 0;
     return Math.min(((filledFields + productFilled) / (totalFields + 1)) * 100, 100);
+  };
+
+  const deliveryDateValue = watch("deliveryDate");
+  const pickupDateValue = watch("pickupDate");
+
+  // Utility function to normalize date to local time
+  const normalizeDate = (dateString) => {
+    const [year, month, day] = dateString.split("-");
+    return new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+  };
+
+  // Convert Date object to YYYY-MM-DD string in local time
+  const toDateString = (date) => {
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
   };
 
   return (
@@ -503,18 +531,28 @@ export default function Checkout({ cartItems = [] }) {
                   <CardHeader className="bg-gradient-to-r from-indigo-100 to-purple-100 dark:from-indigo-900 dark:to-purple-900 text-gray-800 dark:text-gray-100 font-semibold p-4">
                     Delivery Schedule
                   </CardHeader>
-                  <CardContent className="p-6 flex flex-col items-center  dark:from-gray-900 dark:to-gray-800">
+                  <CardContent className="p-6 flex flex-col items-center dark:from-gray-900 dark:to-gray-800">
                     <Calendar
                       mode="single"
-                      selected={new Date(watch("deliveryDate"))}
+                      selected={normalizeDate(deliveryDateValue)}
                       onSelect={(date) => {
                         if (date) {
-                          setValue("deliveryDate", date.toISOString().split("T")[0]);
+                          const newDeliveryDate = toDateString(date);
+                          setValue("deliveryDate", newDeliveryDate);
+                          const pickupDate = normalizeDate(pickupDateValue);
+                          if (new Date(newDeliveryDate) > pickupDate) {
+                            setValue("pickupDate", newDeliveryDate);
+                          }
                           checkAvailability();
                         }
                       }}
-                      disabled={(date) => date < new Date().setHours(0, 0, 0, 0)}
-                      className="rounded-md border border-indigo-300 dark:border-gray-600 shadow-md bg-white dark:bg-gray-800  max-w-md"
+                      disabled={(date) => {
+                        const today = new Date();
+                        today.setHours(0, 0, 0, 0);
+                        const maxDate = normalizeDate(pickupDateValue);
+                        return date < today || date > maxDate;
+                      }}
+                      className="rounded-md border border-indigo-300 dark:border-gray-600 shadow-md bg-white dark:bg-gray-800 max-w-md"
                     />
                     <div className="mt-4 w-full max-w-md flex gap-2">
                       <Input
@@ -542,7 +580,7 @@ export default function Checkout({ cartItems = [] }) {
                       <p className="text-red-500 dark:text-red-400 text-sm mt-2">{errors.deliveryTime.message}</p>
                     )}
                     <p className="text-sm text-gray-500 dark:text-gray-400 mt-2 italic">
-                      Select a date and exact time for delivery.
+                      Select a date and exact time for delivery (must be on or before pickup date).
                     </p>
                   </CardContent>
                 </Card>
@@ -554,15 +592,23 @@ export default function Checkout({ cartItems = [] }) {
                   <CardContent className="p-6 flex flex-col items-center bg-gradient-to-r from-gray-50 to-white dark:from-gray-900 dark:to-gray-800">
                     <Calendar
                       mode="single"
-                      selected={new Date(watch("pickupDate"))}
+                      selected={normalizeDate(pickupDateValue)}
                       onSelect={(date) => {
                         if (date) {
-                          setValue("pickupDate", date.toISOString().split("T")[0]);
+                          const newPickupDate = toDateString(date);
+                          setValue("pickupDate", newPickupDate);
+                          const deliveryDate = normalizeDate(deliveryDateValue);
+                          if (new Date(newPickupDate) < deliveryDate) {
+                            setValue("deliveryDate", newPickupDate);
+                          }
                           checkAvailability();
                         }
                       }}
-                      disabled={(date) => date < new Date(watch("deliveryDate"))}
-                      className="rounded-md border border-indigo-300 dark:border-gray-600 shadow-md bg-white dark:bg-gray-800  max-w-md"
+                      disabled={(date) => {
+                        const minDate = normalizeDate(deliveryDateValue);
+                        return date < minDate;
+                      }}
+                      className="rounded-md border border-indigo-300 dark:border-gray-600 shadow-md bg-white dark:bg-gray-800 max-w-md"
                     />
                     <div className="mt-4 w-full max-w-md flex gap-2">
                       <Input
@@ -590,7 +636,7 @@ export default function Checkout({ cartItems = [] }) {
                       <p className="text-red-500 dark:text-red-400 text-sm mt-2">{errors.pickupTime.message}</p>
                     )}
                     <p className="text-sm text-gray-500 dark:text-gray-400 mt-2 italic">
-                      Select a date and exact time for pickup.
+                      Select a date and exact time for pickup (must be on or after delivery date).
                     </p>
                   </CardContent>
                 </Card>
@@ -636,16 +682,40 @@ export default function Checkout({ cartItems = [] }) {
                       <span className="font-semibold text-gray-700 dark:text-gray-300">Delivery Schedule:</span>
                       <span className="text-gray-800 dark:text-gray-100">
                         {watch("deliveryTime")
-                          ? formatDateTimeForDisplay(watch("deliveryDate"), watch("deliveryTime"), watch("deliveryTimePeriod"))
-                          : new Date(watch("deliveryDate")).toLocaleDateString("en-US", { weekday: "short", month: "long", day: "2-digit", year: "numeric" }).replace(/(\d+)/g, "$1").replace(",", "")}
+                          ? formatDateTimeForDisplay(
+                              watch("deliveryDate"),
+                              watch("deliveryTime"),
+                              watch("deliveryTimePeriod")
+                            )
+                          : new Date(watch("deliveryDate"))
+                              .toLocaleDateString("en-US", {
+                                weekday: "short",
+                                month: "long",
+                                day: "2-digit",
+                                year: "numeric",
+                              })
+                              .replace(/(\d+)/g, "$1")
+                              .replace(",", "")}
                       </span>
                     </div>
                     <div className="flex justify-between">
                       <span className="font-semibold text-gray-700 dark:text-gray-300">Pickup Schedule:</span>
                       <span className="text-gray-800 dark:text-gray-100">
                         {watch("pickupTime")
-                          ? formatDateTimeForDisplay(watch("pickupDate"), watch("pickupTime"), watch("pickupTimePeriod"))
-                          : new Date(watch("pickupDate")).toLocaleDateString("en-US", { weekday: "short", month: "long", day: "2-digit", year: "numeric" }).replace(/(\d+)/g, "$1").replace(",", "")}
+                          ? formatDateTimeForDisplay(
+                              watch("pickupDate"),
+                              watch("pickupTime"),
+                              watch("pickupTimePeriod")
+                            )
+                          : new Date(watch("pickupDate"))
+                              .toLocaleDateString("en-US", {
+                                weekday: "short",
+                                month: "long",
+                                day: "2-digit",
+                                year: "numeric",
+                              })
+                              .replace(/(\d+)/g, "$1")
+                              .replace(",", "")}
                       </span>
                     </div>
                     <div className="flex justify-between">
