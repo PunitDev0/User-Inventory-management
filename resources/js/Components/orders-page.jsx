@@ -33,7 +33,10 @@ export function UserOrdersPage() {
   const [endDate, setEndDate] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
   const [orderExpenses, setOrderExpenses] = useState([]);
-
+  const apiUrl =
+  import.meta.env.VITE_ENVIRONMENT === "production"
+    ? `${import.meta.env.VITE_API_BASE_URL}/api/expenses`
+    : "/api/expenses";
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -44,7 +47,7 @@ export function UserOrdersPage() {
         }));
         setOrders(parsedOrders || []);
 
-        const expensesResponse = await api.get('/expenses');
+        const expensesResponse = await axios.get(apiUrl);
         setOrderExpenses(expensesResponse.data.data || []);
       } catch (error) {
         console.error("Error fetching data:", error);
@@ -209,6 +212,7 @@ export function UserOrdersPage() {
               <TableHead className="font-semibold text-gray-700 dark:text-gray-200">Order ID</TableHead>
               <TableHead className="font-semibold text-gray-700 dark:text-gray-200">Client Name</TableHead>
               <TableHead className="font-semibold text-gray-700 dark:text-gray-200">Delivered Date</TableHead>
+              <TableHead className="font-semibold text-gray-700 dark:text-gray-200">Pickup Date</TableHead>
               <TableHead className="font-semibold text-gray-700 dark:text-gray-200">Products</TableHead>
               <TableHead className="font-semibold text-gray-700 dark:text-gray-200">Quantity</TableHead>
               <TableHead className="font-semibold text-gray-700 dark:text-gray-200">Address</TableHead>
@@ -226,6 +230,7 @@ export function UserOrdersPage() {
                   <TableCell className="text-gray-800 dark:text-gray-200">ARYAN{order.id}</TableCell>
                   <TableCell className="text-gray-800 dark:text-gray-200">{order.user_name}</TableCell>
                   <TableCell className="text-gray-600 dark:text-gray-400">{order.delivered_date}</TableCell>
+                  <TableCell className="text-gray-600 dark:text-gray-400">{order.pickup_time}</TableCell>
                   <TableCell className="text-gray-800 dark:text-gray-200">{order.products.length} Products</TableCell>
                   <TableCell className="text-gray-800 dark:text-gray-200">{order.products.reduce((acc, p) => acc + p.quantity, 0)}</TableCell>
                   <TableCell className="text-gray-600 dark:text-gray-400">
@@ -437,7 +442,7 @@ export function UserOrdersPage() {
 
       {/* Order Details Dialog */}
       <Dialog open={isDetailsDialogOpen} onOpenChange={setIsDetailsDialogOpen}>
-        <DialogContent className="max-w-full sm:max-w-lg bg-white dark:bg-gray-800 p-4 sm:p-6">
+        <DialogContent className="max-w-full sm:max-w-4xl bg-white dark:bg-gray-800 p-4 sm:p-6">
           <DialogHeader>
             <DialogTitle className="text-xl sm:text-2xl font-bold text-gray-800 dark:text-gray-100">Order Details - #{selectedOrder?.id}</DialogTitle>
           </DialogHeader>
@@ -447,8 +452,12 @@ export function UserOrdersPage() {
                 <div><strong>Created:</strong> {formatDate(selectedOrder.created_at)}</div>
                 <div><strong>Phone:</strong> {selectedOrder.user_phone}</div>
                 <div><strong>Delivered:</strong> {selectedOrder.delivered_date}</div>
+                <div><strong>Pickup:</strong> {selectedOrder.pickup_time}</div>
                 <div>
                   <strong>Client Address:</strong> {selectedOrder.user_address}, {selectedOrder.user_city}, {selectedOrder.user_zip}
+                </div>
+                <div>
+                  <strong>Shipping Address:</strong> {selectedOrder.shipping_address}, {selectedOrder.user_city}, {selectedOrder.user_zip}
                 </div>
                 <div>
                   <strong>Total Amount:</strong>{" "}

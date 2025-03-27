@@ -170,14 +170,19 @@ export default function ExpenseForm() {
   const onSubmit = async (values) => {
     if (!validateForm(values)) return;
 
+    const apiUrl =
+    import.meta.env.VITE_ENVIRONMENT === "production"
+      ? `${import.meta.env.VITE_API_BASE_URL}/api/expenses`
+      : "/api/expenses";
+
     setIsLoading(true);
     try {
       const filledExpenses = values.expenses.filter(
         (exp) => exp.amount && exp.amount > 0
       );
       const allExpensesData = [...filledExpenses, ...(values.otherExpenses || [])];
-
-      const response = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/api/expenses`, {
+      
+      const response = await axios.post(apiUrl, {
         order_id: values.orderId,
         expenses: allExpensesData,
         expense_date: format(values.expenseDate, "yyyy-MM-dd"),
@@ -199,7 +204,9 @@ export default function ExpenseForm() {
         });
         setSelectedOrder(null);
 
-        const expensesResponse = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/expenses`);
+       
+
+        const expensesResponse = await axios.get(apiUrl);
         setAllExpenses(expensesResponse.data.data || []);
         setFilteredExpenses(expensesResponse.data.data || []);
       }
