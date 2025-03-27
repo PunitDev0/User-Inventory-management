@@ -1,8 +1,4 @@
-<<<<<<<< HEAD:public/build/assets/index-CePWm4Pi.js
-import{g as c}from"./app-Cw4dLWkH.js";var s={exports:{}};/*!
-========
 import{g as c}from"./app-B0LyX4Ia.js";var s={exports:{}};/*!
->>>>>>>> 4ed5cf0c4c224dc7f50eb1d456187d69851fd291:public/build/assets/index-BPR_n1Dp.js
 	Copyright (c) 2018 Jed Watson.
 	Licensed under the MIT License (MIT), see
 	http://jedwatson.github.io/classnames

@@ -1,8 +1,4 @@
-<<<<<<<< HEAD:public/build/assets/index-BI5R7KBS.js
-import{a as H,u as k,P as O,g as nt,R as rt,S as ot}from"./input-DdtGycOU.js";import{r as c,j as y,e as at}from"./app-Cw4dLWkH.js";/**
-========
 import{a as H,u as k,P as O,g as nt,R as rt,S as ot}from"./input-DFf3wjqo.js";import{r as c,j as y,e as at}from"./app-B0LyX4Ia.js";/**
->>>>>>>> 4ed5cf0c4c224dc7f50eb1d456187d69851fd291:public/build/assets/index-kiGpvPed.js
  * @license lucide-react v0.474.0 - ISC
  *
  * This source code is licensed under the ISC license.
