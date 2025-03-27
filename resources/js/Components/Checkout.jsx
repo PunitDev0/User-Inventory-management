@@ -130,11 +130,20 @@ export default function Checkout({ cartItems = [] }) {
     } catch (err) {
       console.error("Availability check error:", err);
       setAvailabilityStatus({});
-      Swal.fire({
-        icon: "error",
-        title: "Availability Check Failed",
-        text: err.response?.data?.error || "Please try again",
-      });
+      if(err.response?.data?.error.pickup_date){
+        Swal.fire({
+          icon: "error",
+          title: "Availability Check Failed",
+          text: "The pickup date field must be a date after delivered date."
+        });
+      }else{
+
+        Swal.fire({
+          icon: "error",
+          title: "Availability Check Failed",
+          text: err.response?.data?.error || "Please try again",
+        });
+      }
     }
   }, [products, watch]);
 
@@ -170,7 +179,6 @@ export default function Checkout({ cartItems = [] }) {
         title: "Invalid Dates",
         text: "Delivery date must be on or before pickup date",
       });
-      return;
     }
 
     if (Object.values(availabilityStatus).some((status) => !status?.available)) {
