@@ -7,7 +7,7 @@ import { Inertia } from "@inertiajs/inertia";
 
 const navItems = [
   { title: "Home", href: "Home", icon: LayoutDashboard, color: "text-indigo-600" },
-  { title: "Orders", href: "orders", icon: ShoppingCart, color: "text-teal-600" },
+  { title: "Booking", href: "orders", icon: ShoppingCart, color: "text-teal-600" },
   { title: "Cart", href: "cart", icon: ShoppingCart, color: "text-purple-600" },
   { title: "Products", href: "AllProduct", icon: Package2, color: "text-orange-600" },
   { title: "Support", href: "Support", icon: SuperscriptIcon, color: "text-orange-600" },

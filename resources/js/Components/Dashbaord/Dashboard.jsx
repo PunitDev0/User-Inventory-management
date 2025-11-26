@@ -198,10 +198,10 @@ const Dashboard = () => {
       />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mb-6 sm:mb-8">
-        <OrdersTrendChart title="Company Orders Trend" data={companyChartData} timeRange={timeRange}
+        <OrdersTrendChart title="Company Booking Trend" data={companyChartData} timeRange={timeRange}
           color="#0070f3" gradientId="colorOrders" bgClass="bg-indigo-50 dark:bg-indigo-900"
           iconColor="text-indigo-600 dark:text-indigo-400" />
-        <OrdersTrendChart title="My Orders Trend" data={userChartData} timeRange={timeRange}
+        <OrdersTrendChart title="My Booking Trend" data={userChartData} timeRange={timeRange}
           color="#00b894" gradientId="colorMyOrders" bgClass="bg-teal-50 dark:bg-teal-900"
           iconColor="text-teal-600 dark:text-teal-400" />
         <OrdersTrendChart title="Successful Payments Trend" data={successfulPaymentsData} timeRange={timeRange}

@@ -34,13 +34,13 @@ const DashboardStats = ({
   netRevenue
 }) => (
   <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-4 gap-4 sm:gap-6 mb-6 sm:mb-8">
-    <StatCard title="Total Orders" value={companyOrders.length} description="All company orders" 
+    <StatCard title="Total Booking" value={companyOrders.length} description="All company orders" 
       icon={Package} colorClass="text-indigo-600 dark:text-indigo-400" bgClass="bg-indigo-50 dark:bg-indigo-900" />
-    <StatCard title="My Orders" value={filteredOrders.length} description="Your personal orders" 
+    <StatCard title="My Bookings" value={filteredOrders.length} description="Your personal orders" 
       icon={Users} colorClass="text-teal-600 dark:text-teal-400" bgClass="bg-teal-50 dark:bg-teal-900" />
-    <StatCard title="Paid Orders" value={successfulPayments.length} description="Successful payments" 
+    <StatCard title="Paid Bookings" value={successfulPayments.length} description="Successful payments" 
       icon={CheckCircle} colorClass="text-green-600 dark:text-green-400" bgClass="bg-green-50 dark:bg-green-900" />
-    <StatCard title="Total Order Amount" value={totalActualPayAmount} description="Total amount owed" 
+    <StatCard title="Total Booking Amount" value={totalActualPayAmount} description="Total amount owed" 
       icon={Wallet} colorClass="text-blue-600 dark:text-blue-400" bgClass="bg-blue-50 dark:bg-blue-900" />
     <StatCard title="Total Paid Amount" value={totalPaidAmount} description="Total payments received" 
       icon={DollarSign} colorClass="text-purple-600 dark:text-purple-400" bgClass="bg-purple-50 dark:bg-purple-900" />

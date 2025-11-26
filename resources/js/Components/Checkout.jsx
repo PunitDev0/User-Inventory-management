@@ -11,8 +11,10 @@ import Swal from "sweetalert2";
 import { Layout } from "./Layout";
 import ordersService from "@/lib/Services/orders";
 import { Inertia } from "@inertiajs/inertia";
+import { Switch } from "./ui/switch";
 
 export default function Checkout({ cartItems = [] }) {
+  const [gstEnabled, setGstEnabled] = useState(false);
   const {
     register,
     handleSubmit,
@@ -40,9 +42,6 @@ export default function Checkout({ cartItems = [] }) {
       deliveryDate: new Date().toISOString().split("T")[0],
       deliveryTime: "12:00",
       deliveryTimePeriod: "AM",
-      pickupDate: new Date().toISOString().split("T")[0],
-      pickupTime: "12:00",
-      pickupTimePeriod: "AM",
     },
   });
 
@@ -110,11 +109,6 @@ export default function Checkout({ cartItems = [] }) {
         watch("deliveryTime"),
         watch("deliveryTimePeriod")
       );
-      const pickupTimestamp = toMySQLTimestamp(
-        watch("pickupDate"),
-        watch("pickupTime"),
-        watch("pickupTimePeriod")
-      );
 
       const availabilityData = {
         products: products.map((product) => ({
@@ -171,15 +165,6 @@ export default function Checkout({ cartItems = [] }) {
 
   const onSubmit = async (data) => {
     const deliveryDate = new Date(data.deliveryDate);
-    const pickupDate = new Date(data.pickupDate);
-
-    if (deliveryDate > pickupDate) {
-      Swal.fire({
-        icon: "warning",
-        title: "Invalid Dates",
-        text: "Delivery date must be on or before pickup date",
-      });
-    }
 
     if (Object.values(availabilityStatus).some((status) => !status?.available)) {
       Swal.fire({
@@ -215,11 +200,6 @@ export default function Checkout({ cartItems = [] }) {
         data.deliveryTime,
         data.deliveryTimePeriod
       );
-      const pickupTimestamp = toMySQLTimestamp(
-        data.pickupDate,
-        data.pickupTime,
-        data.pickupTimePeriod
-      );
 
       const orderData = {
         name: data.name,
@@ -233,6 +213,7 @@ export default function Checkout({ cartItems = [] }) {
         paid_amount: paidAmount,
         total_amount: bookingAmount,
         pending_payment: remainingAmount,
+        is_gst: gstEnabled ? 1 : 0,   // ← GST added here
         products: products.map((product) => ({
           product_id: product.product.id,
           quantity: product.quantity,
@@ -242,7 +223,6 @@ export default function Checkout({ cartItems = [] }) {
           product_name: product.product.productName,
         })),
         delivered_date: deliveryTimestamp,
-        pickup_time: pickupTimestamp,
         type: "checkout",
       };
 
@@ -285,7 +265,6 @@ export default function Checkout({ cartItems = [] }) {
   };
 
   const deliveryDateValue = watch("deliveryDate");
-  const pickupDateValue = watch("pickupDate");
 
   // Utility function to normalize date to local time
   const normalizeDate = (dateString) => {
@@ -302,7 +281,7 @@ export default function Checkout({ cartItems = [] }) {
     <Layout>
       <div className="max-w-5xl mx-auto p-4 sm:p-6 lg:p-8 bg-gradient-to-br from-indigo-50 via-gray-100 to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-indigo-900 min-h-screen">
         <h1 className="text-3xl sm:text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-purple-600 dark:from-indigo-400 dark:to-purple-400 tracking-tight mb-8">
-          Complete Your Order
+          Complete Your Booking
         </h1>
         <Progress value={calculateProgress()} className="mb-8 h-3 rounded-full bg-indigo-200 dark:bg-gray-700 shadow-md" />
 
@@ -437,6 +416,20 @@ export default function Checkout({ cartItems = [] }) {
                         )}
                       </div>
                     </div>
+                    <div className="flex justify-between items-center">
+                      <span className="font-semibold text-gray-700 dark:text-gray-300">GST</span>
+
+                      <div className="flex items-center gap-3">
+                        <span className="text-gray-700 dark:text-gray-300 font-semibold">
+                          {gstEnabled ? "Yes" : "No"}
+                        </span>
+
+                        <Switch
+                          checked={gstEnabled}
+                          onCheckedChange={(value) => setGstEnabled(value)}
+                        />
+                      </div>
+                    </div>
                     <div className="flex justify-between">
                       <span className="font-semibold text-gray-700 dark:text-gray-300">Remaining Amount:</span>
                       <span className="flex items-center text-indigo-600 dark:text-indigo-300 font-bold text-xl">
@@ -537,7 +530,7 @@ export default function Checkout({ cartItems = [] }) {
 
                 <Card className="mb-6 shadow-lg border border-indigo-200 dark:border-gray-700">
                   <CardHeader className="bg-gradient-to-r from-indigo-100 to-purple-100 dark:from-indigo-900 dark:to-purple-900 text-gray-800 dark:text-gray-100 font-semibold p-4">
-                    Delivery Schedule
+                    Event Date
                   </CardHeader>
                   <CardContent className="p-6 flex flex-col items-center dark:from-gray-900 dark:to-gray-800">
                     <Calendar
@@ -547,18 +540,12 @@ export default function Checkout({ cartItems = [] }) {
                         if (date) {
                           const newDeliveryDate = toDateString(date);
                           setValue("deliveryDate", newDeliveryDate);
-                          const pickupDate = normalizeDate(pickupDateValue);
-                          if (new Date(newDeliveryDate) > pickupDate) {
-                            setValue("pickupDate", newDeliveryDate);
-                          }
                           checkAvailability();
                         }
                       }}
                       disabled={(date) => {
                         const today = new Date();
                         today.setHours(0, 0, 0, 0);
-                        const maxDate = normalizeDate(pickupDateValue);
-                        return date < today || date > maxDate;
                       }}
                       className="rounded-md border border-indigo-300 dark:border-gray-600 shadow-md bg-white dark:bg-gray-800 max-w-md"
                     />
@@ -588,63 +575,7 @@ export default function Checkout({ cartItems = [] }) {
                       <p className="text-red-500 dark:text-red-400 text-sm mt-2">{errors.deliveryTime.message}</p>
                     )}
                     <p className="text-sm text-gray-500 dark:text-gray-400 mt-2 italic">
-                      Select a date and exact time for delivery (must be on or before pickup date).
-                    </p>
-                  </CardContent>
-                </Card>
-
-                <Card className="mb-6 shadow-lg border border-indigo-200 dark:border-gray-700">
-                  <CardHeader className="bg-gradient-to-r from-indigo-100 to-purple-100 dark:from-indigo-900 dark:to-purple-900 text-gray-800 dark:text-gray-100 font-semibold p-4">
-                    Pickup Schedule
-                  </CardHeader>
-                  <CardContent className="p-6 flex flex-col items-center bg-gradient-to-r from-gray-50 to-white dark:from-gray-900 dark:to-gray-800">
-                    <Calendar
-                      mode="single"
-                      selected={normalizeDate(pickupDateValue)}
-                      onSelect={(date) => {
-                        if (date) {
-                          const newPickupDate = toDateString(date);
-                          setValue("pickupDate", newPickupDate);
-                          const deliveryDate = normalizeDate(deliveryDateValue);
-                          if (new Date(newPickupDate) < deliveryDate) {
-                            setValue("deliveryDate", newPickupDate);
-                          }
-                          checkAvailability();
-                        }
-                      }}
-                      disabled={(date) => {
-                        const minDate = normalizeDate(deliveryDateValue);
-                        return date < minDate;
-                      }}
-                      className="rounded-md border border-indigo-300 dark:border-gray-600 shadow-md bg-white dark:bg-gray-800 max-w-md"
-                    />
-                    <div className="mt-4 w-full max-w-md flex gap-2">
-                      <Input
-                        type="time"
-                        {...register("pickupTime", { required: "Pickup time is required" })}
-                        onChange={(e) => {
-                          setValue("pickupTime", e.target.value);
-                          checkAvailability();
-                        }}
-                        className="flex-1 p-2 border border-indigo-300 dark:border-gray-600 rounded-lg bg-indigo-50 dark:bg-gray-700 focus:ring-2 focus:ring-indigo-500 transition-all duration-300"
-                      />
-                      <select
-                        {...register("pickupTimePeriod", { required: "Time period is required" })}
-                        onChange={(e) => {
-                          setValue("pickupTimePeriod", e.target.value);
-                          checkAvailability();
-                        }}
-                        className="p-2 border border-indigo-300 dark:border-gray-600 rounded-lg bg-indigo-50 dark:bg-gray-700 focus:ring-2 focus:ring-indigo-500 transition-all duration-300"
-                      >
-                        <option value="AM">AM</option>
-                        <option value="PM">PM</option>
-                      </select>
-                    </div>
-                    {errors.pickupTime && (
-                      <p className="text-red-500 dark:text-red-400 text-sm mt-2">{errors.pickupTime.message}</p>
-                    )}
-                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-2 italic">
-                      Select a date and exact time for pickup (must be on or after delivery date).
+                      Select a date and exact time for Event (must be on or before pickup date).
                     </p>
                   </CardContent>
                 </Card>
@@ -696,26 +627,6 @@ export default function Checkout({ cartItems = [] }) {
                               watch("deliveryTimePeriod")
                             )
                           : new Date(watch("deliveryDate"))
-                              .toLocaleDateString("en-US", {
-                                weekday: "short",
-                                month: "long",
-                                day: "2-digit",
-                                year: "numeric",
-                              })
-                              .replace(/(\d+)/g, "$1")
-                              .replace(",", "")}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="font-semibold text-gray-700 dark:text-gray-300">Pickup Schedule:</span>
-                      <span className="text-gray-800 dark:text-gray-100">
-                        {watch("pickupTime")
-                          ? formatDateTimeForDisplay(
-                              watch("pickupDate"),
-                              watch("pickupTime"),
-                              watch("pickupTimePeriod")
-                            )
-                          : new Date(watch("pickupDate"))
                               .toLocaleDateString("en-US", {
                                 weekday: "short",
                                 month: "long",

@@ -28,7 +28,7 @@ class Order extends Model
         'status',
         'billing_number',
         'shipping_address',
-        'pickup_time'
+        'gst',
     ];
 
     // If the products column is a JSON field, you can cast it to an array

@@ -259,9 +259,9 @@ const Dashboard = () => {
           <CardHeader className="bg-indigo-50 dark:bg-indigo-900 p-4 rounded-t-lg">
             <CardTitle className="flex items-center gap-2 text-gray-800 dark:text-gray-100 text-lg sm:text-xl font-semibold">
               <Package className="w-6 h-6 sm:w-7 sm:h-7 text-indigo-600 dark:text-indigo-400" />
-              Total Orders
+              Total Bookings
             </CardTitle>
-            <CardDescription className="text-gray-600 dark:text-gray-400 text-sm">All company orders</CardDescription>
+            <CardDescription className="text-gray-600 dark:text-gray-400 text-sm">All company Booking</CardDescription>
           </CardHeader>
           <CardContent className="p-4">
             <p className="text-3xl sm:text-4xl font-bold text-indigo-600 dark:text-indigo-400">
@@ -274,9 +274,9 @@ const Dashboard = () => {
           <CardHeader className="bg-teal-50 dark:bg-teal-900 p-4 rounded-t-lg">
             <CardTitle className="flex items-center gap-2 text-gray-800 dark:text-gray-100 text-lg sm:text-xl font-semibold">
               <Users className="w-6 h-6 sm:w-7 sm:h-7 text-teal-600 dark:text-teal-400" />
-              My Orders
+              My Bookings
             </CardTitle>
-            <CardDescription className="text-gray-600 dark:text-gray-400 text-sm">Your personal orders</CardDescription>
+            <CardDescription className="text-gray-600 dark:text-gray-400 text-sm">Your personal booking</CardDescription>
           </CardHeader>
           <CardContent className="p-4">
             <p className="text-3xl sm:text-4xl font-bold text-teal-600 dark:text-teal-400">
@@ -289,7 +289,7 @@ const Dashboard = () => {
           <CardHeader className="bg-green-50 dark:bg-green-900 p-4 rounded-t-lg">
             <CardTitle className="flex items-center gap-2 text-gray-800 dark:text-gray-100 text-lg sm:text-xl font-semibold">
               <CheckCircle className="w-6 h-6 sm:w-7 sm:h-7 text-green-600 dark:text-green-400" />
-              Paid Orders
+              Paid Booking
             </CardTitle>
             <CardDescription className="text-gray-600 dark:text-gray-400 text-sm">Successful payments</CardDescription>
           </CardHeader>
@@ -304,7 +304,7 @@ const Dashboard = () => {
           <CardHeader className="bg-blue-50 dark:bg-blue-900 p-4 rounded-t-lg">
             <CardTitle className="flex items-center gap-2 text-gray-800 dark:text-gray-100 text-lg sm:text-xl font-semibold">
               <Wallet className="w-6 h-6 sm:w-7 sm:h-7 text-blue-600 dark:text-blue-400" />
-              Total Order Amount
+              Total Booking Amount
             </CardTitle>
             <CardDescription className="text-gray-600 dark:text-gray-400 text-sm">Total amount owed</CardDescription>
           </CardHeader>
@@ -383,7 +383,7 @@ const Dashboard = () => {
           <CardHeader className="bg-indigo-50 dark:bg-indigo-900 p-4 rounded-t-lg">
             <CardTitle className="flex items-center gap-2 text-gray-800 dark:text-gray-100 text-lg sm:text-xl font-semibold">
               <TrendingUp className="w-6 h-6 sm:w-7 sm:h-7 text-indigo-600 dark:text-indigo-400" />
-              Company Orders Trend
+              Company Booking Trend
             </CardTitle>
             <CardDescription className="text-gray-600 dark:text-gray-400 text-sm">
               {timeRange === "All" ? "All time" : `Last ${timeRange} days`}
@@ -443,7 +443,7 @@ const Dashboard = () => {
           <CardHeader className="bg-teal-50 dark:bg-teal-900 p-4 rounded-t-lg">
             <CardTitle className="flex items-center gap-2 text-gray-800 dark:text-gray-100 text-lg sm:text-xl font-semibold">
               <TrendingUp className="w-6 h-6 sm:w-7 sm:h-7 text-teal-600 dark:text-teal-400" />
-              My Orders Trend
+              My Bookings Trend
             </CardTitle>
             <CardDescription className="text-gray-600 dark:text-gray-400 text-sm">
               {timeRange === "All" ? "All time" : `Last ${timeRange} days`}
@@ -632,7 +632,7 @@ const Dashboard = () => {
             </div>
             <div className="flex items-center gap-2 mt-2 sm:mt-0 bg-indigo-100 dark:bg-indigo-800 px-3 py-1 rounded-lg">
               <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                Total Orders:
+                Total Booking:
               </span>
               <span className="text-lg font-bold text-indigo-600 dark:text-indigo-400">
                 {filteredOrders.length}

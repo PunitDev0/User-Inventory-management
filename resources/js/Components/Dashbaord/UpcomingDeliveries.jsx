@@ -42,7 +42,7 @@ const UpcomingDeliveries = ({ orders }) => {
             Upcoming Deliveries
           </CardTitle>
           <CardDescription className="text-gray-600 dark:text-gray-400 text-sm mt-1">
-            Orders scheduled for delivery
+            Booking scheduled for delivery
           </CardDescription>
         </div>
         <div className="flex items-center gap-3 mt-2 sm:mt-0">

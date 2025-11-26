@@ -49,7 +49,6 @@ class OrdersController extends Controller
             'products.*.product_price' => 'required|numeric|min:0',
             'products.*.total_price' => 'required|numeric|min:0',
             'delivered_date' => 'required|date_format:Y-m-d H:i:s',
-            'pickup_time' => 'required|date_format:Y-m-d H:i:s|after:delivered_date',
             'type' => 'nullable|string|in:checkout',
         ]);
 
@@ -84,7 +83,7 @@ class OrdersController extends Controller
                 'products' => json_encode($request->products),
                 'status' => $request->pending_payment > 0 ? 'pending' : 'paid',
                 'delivered_date' => $deliveredDate->toDateTimeString(), // Ensure proper format
-                'pickup_time' => $pickupTime->toDateTimeString(),       // Ensure proper format
+                'gst' => $request->is_gst,
             ]);
 
             // Log payment
